@@ -1,0 +1,78 @@
+{
+  "providers": {
+    "cloudflare-ai-gateway": {
+      "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat",
+      "api": "openai-completions",
+      "models": [
+        {
+          "id": "workers-ai/@cf/zai-org/glm-5.3-flash",
+          "name": "Glm 5.3 Flash",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "cost": {
+            "input": 0.15,
+            "output": 0.5,
+            "cacheRead": 0.03,
+            "cacheWrite": 0
+          },
+          "contextWindow": 1048576,
+          "maxTokens": 131072,
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "maxTokensField": "max_tokens",
+            "supportsStrictMode": false,
+            "supportsLongCacheRetention": false,
+            "sendSessionAffinityHeaders": true
+          }
+        },
+        {
+          "id": "workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+          "name": "Deepseek V4.1 Flash 1017",
+          "api": "openai-completions",
+          "provider": "cloudflare-ai-gateway",
+          "baseUrl": "https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat",
+          "reasoning": true,
+          "input": ["text", "image"],
+          "cost": {
+            "input": 0.3,
+            "output": 1.2,
+            "cacheRead": 0.006,
+            "cacheWrite": 0
+          },
+          "contextWindow": 1048576,
+          "maxTokens": 131072,
+          "compat": {
+            "supportsStore": false,
+            "supportsDeveloperRole": false,
+            "supportsReasoningEffort": false,
+            "maxTokensField": "max_tokens",
+            "supportsLongCacheRetention": false,
+            "sendSessionAffinityHeaders": true,
+            "requiresReasoningContentOnAssistantMessages": true,
+            "thinkingFormat": "deepseek"
+          },
+          "thinkingLevelMap": {
+            "minimal": null,
+            "low": null,
+            "medium": null,
+            "high": "high",
+            "max": "max"
+          },
+          "inputLimits": {
+            "images": {
+              "resize": {
+                "maxWidth": 2000,
+                "maxHeight": 2000,
+                "maxBytes": 4718592,
+                "jpegQuality": 80
+              }
+            }
+          },
+          "type": "chat"
+        }
+      ]
+    }
+  }
+}

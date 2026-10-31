@@ -1,0 +1,11 @@
+{
+  "skills": [
+    { "name": "herdr", "repo": "herdrdev/herdr", "path": "skills/herdr", "harness": "claude pi", "scope": "global" },
+    { "name": "modern-web-guidance", "repo": "GoogleChrome/modern-web-guidance", "path": "skills/modern-web-guidance", "harness": "claude pi", "scope": "global" },
+    { "name": "frontend-design", "repo": "anthropics/claude-plugins-official", "path": "plugins/frontend-design/skills/frontend-design", "harness": "claude", "scope": "global" },
+    { "name": "cloudflare", "repo": "cloudflare/skills", "harness": "claude pi", "scope": "opt-in" }
+  ],
+  "piPackages": [
+    { "npm": "@earendil-works/pi-voice", "profiles": ["workstation"] }
+  ]
+}

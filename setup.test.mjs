@@ -1,0 +1,140 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { test } from "node:test";
+import {
+	buildMarketplace,
+	buildPiManifest,
+	deepMerge,
+	loadCatalog,
+	packageIdentity,
+	parseSkillMetadata,
+	replaceManagedPackages,
+	validateSpec,
+} from "./setup.mjs";
+
+const skillFile = (harness, scope) => `---\nname: x\ndescription: y\nmetadata:\n  harness: ${harness}\n  scope: ${scope}\n---\nbody\n`;
+
+function fixture() {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "ai-harness-test-"));
+	const addSkill = (name, harness, scope) => {
+		fs.mkdirSync(path.join(root, "skills", name), { recursive: true });
+		fs.writeFileSync(path.join(root, "skills", name, "SKILL.md"), skillFile(harness, scope));
+	};
+	addSkill("shared-global", "claude pi", "global");
+	addSkill("claude-global", "claude", "global");
+	addSkill("pi-global", "pi", "global");
+	addSkill("opt-in-own", "claude pi", "opt-in");
+	addSkill("pi-opt-in", "pi", "opt-in");
+	fs.mkdirSync(path.join(root, "skills", "synced"));
+	fs.mkdirSync(path.join(root, "commands"));
+	fs.writeFileSync(path.join(root, "commands", "hello.md"), "x\n");
+	fs.mkdirSync(path.join(root, "pi", "prompts"), { recursive: true });
+	fs.writeFileSync(path.join(root, "pi", "prompts", "implement.md"), "x\n");
+	fs.mkdirSync(path.join(root, "pi", "extensions", "subagent"), { recursive: true });
+	fs.writeFileSync(path.join(root, "pi", "extensions", "subagent", "index.ts"), "");
+	fs.writeFileSync(path.join(root, "pi", "extensions", "web-search.ts"), "");
+	fs.writeFileSync(
+		path.join(root, "upstream.json"),
+		JSON.stringify({
+			skills: [
+				{ name: "subdir", repo: "o/r", path: "skills/subdir", harness: "claude pi", scope: "global" },
+				{ name: "whole", repo: "o/w", harness: "claude pi", scope: "opt-in" },
+			],
+			piPackages: [],
+		}),
+	);
+	fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify({ skills: { subdir: "a".repeat(40), whole: "b".repeat(40) }, npm: {} }));
+	return root;
+}
+
+test("parseSkillMetadata reads harness and scope", () => {
+	assert.deepEqual(parseSkillMetadata(skillFile("claude pi", "opt-in"), "x"), { harnesses: ["claude", "pi"], scope: "opt-in" });
+});
+
+test("parseSkillMetadata rejects missing or invalid metadata", () => {
+	assert.throws(() => parseSkillMetadata("---\nname: x\n---\n", "x"), /metadata.harness/);
+	assert.throws(() => parseSkillMetadata(skillFile("codex", "global"), "x"), /metadata.harness/);
+	assert.throws(() => parseSkillMetadata(skillFile("pi", "sometimes"), "x"), /metadata.scope/);
+});
+
+test("loadCatalog rejects a name declared twice for one harness but allows disjoint harnesses", () => {
+	const root = fixture();
+	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "claude", scope: "global" }], piPackages: [] }));
+	assert.equal(loadCatalog(root).skills.filter((skill) => skill.name === "pi-global").length, 2);
+	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "pi", scope: "global" }], piPackages: [] }));
+	assert.throws(() => loadCatalog(root), /declared twice/);
+});
+
+test("buildMarketplace puts own global skills in ai and pins upstream plugins", () => {
+	const root = fixture();
+	const marketplace = buildMarketplace(loadCatalog(root), root);
+	const [ai, subdir, whole] = marketplace.plugins;
+	assert.deepEqual(ai.skills, ["./skills/claude-global", "./skills/shared-global"]);
+	assert.deepEqual(ai.commands, ["./commands/hello.md"]);
+	assert.deepEqual(subdir.source, { source: "git-subdir", url: "o/r", path: "skills/subdir", sha: "a".repeat(40) });
+	assert.deepEqual(subdir.skills, ["./"]);
+	assert.deepEqual(whole, { name: "whole", source: { source: "github", repo: "o/w", sha: "b".repeat(40) } });
+});
+
+test("buildMarketplace fails when an upstream skill isn't locked", () => {
+	const root = fixture();
+	fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify({ skills: {}, npm: {} }));
+	assert.throws(() => buildMarketplace(loadCatalog(root), root), /upstream.lock.json/);
+});
+
+test("buildPiManifest lists only own global pi skills", () => {
+	const root = fixture();
+	const { pi } = buildPiManifest(loadCatalog(root), root);
+	assert.deepEqual(pi.skills, ["./skills/pi-global", "./skills/shared-global"]);
+	assert.deepEqual(pi.extensions, ["./pi/extensions/subagent/index.ts", "./pi/extensions/web-search.ts"]);
+	assert.deepEqual(pi.prompts, ["./commands/hello.md", "./pi/prompts/implement.md"]);
+});
+
+test("validateSpec accepts a catalog-only spec", () => {
+	const root = fixture();
+	const spec = { version: 1, harnesses: ["pi"], global: false, skills: ["whole", "pi-opt-in"], workflows: ["implement"], extensions: ["subagent"], config: ["instructions"], env: ["API_TOKEN"] };
+	assert.deepEqual(validateSpec(spec, loadCatalog(root), root), []);
+});
+
+test("validateSpec rejects anything outside the catalog", () => {
+	const root = fixture();
+	const catalog = loadCatalog(root);
+	const cases = [
+		[{ version: 1, harnesses: ["pi"], hooks: {} }, /unknown field: hooks/],
+		[{ version: 1, harnesses: ["pi"], settings: {} }, /unknown field: settings/],
+		[{ version: 1, harnesses: ["pi"], skills: ["https://evil.example/x"] }, /unknown skill/],
+		[{ version: 1, harnesses: ["pi"], skills: ["../../etc"] }, /unknown skill/],
+		[{ version: 1, harnesses: ["pi"], extensions: ["../evil"] }, /unknown extension/],
+		[{ version: 1, harnesses: ["pi"], workflows: ["../evil"] }, /unknown workflow/],
+		[{ version: 1, harnesses: ["pi"], config: ["claude-settings"] }, /unknown config/],
+		[{ version: 1, harnesses: ["pi"], env: ["lower-case;rm"] }, /invalid env/],
+		[{ version: 1, harnesses: ["pi"], aiRef: "--upload-pack=x" }, /aiRef/],
+		[{ version: 1, harnesses: ["pi"], aiRef: "a..b" }, /aiRef/],
+		[{ version: 1, harnesses: ["codex"] }, /unknown harness/],
+		[{ version: 1, harnesses: [] }, /at least one harness/],
+		[{ version: 2, harnesses: ["pi"] }, /version/],
+		[{ version: 1, harnesses: ["claude"], skills: ["pi-opt-in"] }, /supports none/],
+		[[], /JSON object/],
+	];
+	for (const [spec, expected] of cases) assert.match(validateSpec(spec, catalog, root).join("\n"), expected, JSON.stringify(spec));
+});
+
+test("deepMerge keeps unrelated keys and replaces arrays", () => {
+	assert.deepEqual(deepMerge({ a: 1, n: { x: 1, y: 2 }, l: [1] }, { b: 2, n: { y: 3 }, l: [2] }), { a: 1, b: 2, n: { x: 1, y: 3 }, l: [2] });
+});
+
+test("packageIdentity ignores versions and refs", () => {
+	assert.equal(packageIdentity("npm:@scope/name@1.2.3"), "npm:@scope/name");
+	assert.equal(packageIdentity("npm:@scope/name"), "npm:@scope/name");
+	assert.equal(packageIdentity("npm:plain@1.0.0"), "npm:plain");
+	assert.equal(packageIdentity({ source: "git:github.com/o/r@abc" }), "git:github.com/o/r");
+	assert.equal(packageIdentity("/abs/path"), "/abs/path");
+});
+
+test("replaceManagedPackages keeps user entries, drops stale ones, and updates pins", () => {
+	const packages = ["npm:user-package", "git:github.com/o/old@1", "git:github.com/o/r@1"];
+	const next = replaceManagedPackages(packages, ["git:github.com/o/old", "git:github.com/o/r"], ["git:github.com/o/r@2"]);
+	assert.deepEqual(next, ["npm:user-package", "git:github.com/o/r@2"]);
+});

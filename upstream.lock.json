@@ -1,0 +1,11 @@
+{
+  "skills": {
+    "herdr": "ee5bfb5041bb3e4a49d591c72308aae3c81ecdde",
+    "modern-web-guidance": "4f2b13e25c5815b3f080ca0d983e828d96561a0f",
+    "frontend-design": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a",
+    "cloudflare": "1a33048817d06df12882cb881dfc754e7039954a"
+  },
+  "npm": {
+    "@earendil-works/pi-voice": "0.2.0"
+  }
+}

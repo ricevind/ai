@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "backend": {
+    "type": "transcribe-cpp"
+  },
+  "shortcut": "ctrl+alt+z",
+  "preferredLanguages": [
+    "en",
+    "pl"
+  ],
+  "transcriptionLanguage": "auto",
+  "chineseOutput": "simplified",
+  "microphone": {
+    "type": "system-default"
+  },
+  "model": {
+    "source": "catalog",
+    "id": "parakeet-tdt-0.6b-v3"
+  }
+}

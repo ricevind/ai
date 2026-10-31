@@ -1,0 +1,13 @@
+{
+  "theme": "dark",
+  "showCacheMissNotices": true,
+  "tuiMode": "fullscreen",
+  "defaultProvider": "cloudflare-ai-gateway",
+  "defaultModel": "workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+  "enabledModels": [
+    "cloudflare-ai-gateway/workers-ai/@cf/zai-org/glm-5.3-flash",
+    "cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017"
+  ],
+  "hideThinkingBlock": true,
+  "externalEditor": "code --wait"
+}

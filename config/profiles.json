@@ -1,0 +1,4 @@
+{
+  "workstation": { "config": ["instructions", "claude-settings", "pi-settings", "pi-models", "pi-mcp", "pi-voice"] },
+  "sandbox": { "config": ["instructions"] }
+}
