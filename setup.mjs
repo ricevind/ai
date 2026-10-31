@@ -16,6 +16,7 @@ const ENV_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
 const REPO_PATTERN = /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/;
 const SPEC_KEYS = ["version", "aiRef", "harnesses", "global", "skills", "workflows", "extensions", "config", "env"];
 const SPEC_CONFIG = ["instructions", "pi-models", "pi-mcp"];
+const PI_PROJECT_CACHE_DIRS = [".pi/git/", ".pi/npm/"];
 const PI_HOST_PACKAGES = ["@earendil-works/pi-ai", "@earendil-works/pi-agent-core", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"];
 
 class SetupError extends Error {}
@@ -113,6 +114,9 @@ const extensionPath = (root, name) =>
 		? `pi/extensions/${name}/index.ts`
 		: `pi/extensions/${name}.ts`;
 
+// Claude clones the owner/repo shorthand over SSH, which fails on machines without SSH keys.
+const repoUrl = (repo) => `https://github.com/${repo}.git`;
+
 const requireSha = (skill) => {
 	if (!skill.sha) throw new SetupError(`${skill.name}: missing from upstream.lock.json, run setup.mjs update`);
 	return skill.sha;
@@ -129,11 +133,11 @@ export function buildMarketplace(catalog, root = ROOT) {
 			skill.path
 				? {
 						name: skill.name,
-						source: { source: "git-subdir", url: skill.repo, path: skill.path, sha: requireSha(skill) },
+						source: { source: "git-subdir", url: repoUrl(skill.repo), path: skill.path, sha: requireSha(skill) },
 						strict: false,
 						skills: ["./"],
 					}
-				: { name: skill.name, source: { source: "github", repo: skill.repo, sha: requireSha(skill) } },
+				: { name: skill.name, source: { source: "url", url: repoUrl(skill.repo), sha: requireSha(skill) } },
 		);
 	return {
 		name: MARKETPLACE,
@@ -486,7 +490,7 @@ async function apply({ specPath, checkout, force }) {
 		}
 		next.piCopies = copies;
 		next.piPackages = entries.map(packageIdentity);
-		excludes.push(...copies.map((name) => `.pi/skills/${name}`));
+		excludes.push(...PI_PROJECT_CACHE_DIRS, ...copies.map((name) => `.pi/skills/${name}`));
 		if (isTracked(project, ".pi/settings.json")) console.warn("warning: .pi/settings.json is tracked by git, generated package entries will show as changes");
 		else excludes.push(".pi/settings.json");
 	}
@@ -590,7 +594,7 @@ function update() {
 	const skills = {};
 	for (const skill of upstream.skills) {
 		if (!REPO_PATTERN.test(skill.repo)) throw new SetupError(`${skill.name}: invalid repo ${skill.repo}`);
-		const head = execFileSync("git", ["ls-remote", `https://github.com/${skill.repo}.git`, "HEAD"], { encoding: "utf8" });
+		const head = execFileSync("git", ["ls-remote", repoUrl(skill.repo), "HEAD"], { encoding: "utf8" });
 		skills[skill.name] = head.split(/\s/)[0];
 	}
 	const npm = {};

@@ -73,9 +73,9 @@ test("buildMarketplace puts own global skills in ai and pins upstream plugins", 
 	const [ai, subdir, whole] = marketplace.plugins;
 	assert.deepEqual(ai.skills, ["./skills/claude-global", "./skills/shared-global"]);
 	assert.deepEqual(ai.commands, ["./commands/hello.md"]);
-	assert.deepEqual(subdir.source, { source: "git-subdir", url: "o/r", path: "skills/subdir", sha: "a".repeat(40) });
+	assert.deepEqual(subdir.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/subdir", sha: "a".repeat(40) });
 	assert.deepEqual(subdir.skills, ["./"]);
-	assert.deepEqual(whole, { name: "whole", source: { source: "github", repo: "o/w", sha: "b".repeat(40) } });
+	assert.deepEqual(whole, { name: "whole", source: { source: "url", url: "https://github.com/o/w.git", sha: "b".repeat(40) } });
 });
 
 test("buildMarketplace fails when an upstream skill isn't locked", () => {

@@ -22,7 +22,7 @@
       "name": "herdr",
       "source": {
         "source": "git-subdir",
-        "url": "herdrdev/herdr",
+        "url": "https://github.com/herdrdev/herdr.git",
         "path": "skills/herdr",
         "sha": "ee5bfb5041bb3e4a49d591c72308aae3c81ecdde"
       },
@@ -35,7 +35,7 @@
       "name": "modern-web-guidance",
       "source": {
         "source": "git-subdir",
-        "url": "GoogleChrome/modern-web-guidance",
+        "url": "https://github.com/GoogleChrome/modern-web-guidance.git",
         "path": "skills/modern-web-guidance",
         "sha": "4f2b13e25c5815b3f080ca0d983e828d96561a0f"
       },
@@ -48,7 +48,7 @@
       "name": "frontend-design",
       "source": {
         "source": "git-subdir",
-        "url": "anthropics/claude-plugins-official",
+        "url": "https://github.com/anthropics/claude-plugins-official.git",
         "path": "plugins/frontend-design/skills/frontend-design",
         "sha": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a"
       },
@@ -60,8 +60,8 @@
     {
       "name": "cloudflare",
       "source": {
-        "source": "github",
-        "repo": "cloudflare/skills",
+        "source": "url",
+        "url": "https://github.com/cloudflare/skills.git",
         "sha": "1a33048817d06df12882cb881dfc754e7039954a"
       }
     }
