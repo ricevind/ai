@@ -60,10 +60,145 @@
     {
       "name": "cloudflare",
       "source": {
-        "source": "url",
+        "source": "git-subdir",
         "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/cloudflare",
         "sha": "1a33048817d06df12882cb881dfc754e7039954a"
-      }
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "workers-best-practices",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/workers-best-practices",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "wrangler",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/wrangler",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "cf-cli",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/cf-cli",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "durable-objects",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/durable-objects",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "agents-sdk",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/agents-sdk",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "cloudflare-email-service",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/cloudflare-email-service",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "turnstile-spin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/turnstile-spin",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "web-perf",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/web-perf",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "workers-profiling",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/workers-profiling",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
+    },
+    {
+      "name": "sandbox-next",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/cloudflare/skills.git",
+        "path": "skills/sandbox-next",
+        "sha": "1a33048817d06df12882cb881dfc754e7039954a"
+      },
+      "strict": false,
+      "skills": [
+        "./"
+      ]
     }
   ]
 }

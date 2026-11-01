@@ -28,9 +28,9 @@ node ~/ai/setup.mjs apply --spec /path/to/project/harness.json --checkout
 
 | Command | What it does |
 |---|---|
-| `install [--profile workstation\|sandbox] [--harness claude,pi] [--force]` | Sets up global skills, extensions, and config for the machine |
+| `install [--profile workstation\|sandbox] [--preset name,name] [--harness claude,pi] [--force]` | Sets up global skills, extensions, and config for the machine, plus any presets |
 | `apply --spec <repo>/harness.json [--checkout] [--force]` | Adds a repo's opt-in skills to that repo only |
-| `check [--spec <repo>/harness.json] [--harness claude,pi] [--approve]` | Compares what's loaded with what's expected, and exits non-zero on a mismatch |
+| `check [--spec <repo>/harness.json] [--preset name,name] [--harness claude,pi] [--approve]` | Compares what's loaded with what's expected, and exits non-zero on a mismatch |
 | `update` | Refreshes `upstream.lock.json` and the generated manifests, for you to review and commit |
 | `generate` | Rebuilds `.claude-plugin/marketplace.json` and `package.json` |
 
@@ -44,7 +44,8 @@ Commit a `harness.json` at the root of the project:
 {
   "version": 1,
   "harnesses": ["claude", "pi"],
-  "skills": ["cloudflare", "stylex"],
+  "presets": ["cloudflare", "astryx"],
+  "skills": ["web-perf"],
   "env": ["CLOUDFLARE_ACCOUNT_ID"]
 }
 ```
@@ -53,7 +54,8 @@ Commit a `harness.json` at the root of the project:
 |---|---|
 | `version` | Always `1` |
 | `harnesses` | `claude`, `pi`, or both |
-| `skills` | Skill names from this repo's catalog |
+| `presets` | Named skill sets from this repo's `presets/` directory |
+| `skills` | More skill names from this repo's catalog |
 | `global` | `false` skips setting up global skills on a machine that doesn't have them |
 | `aiRef` | The `ai` version this project needs. `--checkout` switches the clone to it, otherwise the clone must already contain it |
 | `config` | Any of `instructions`, `pi-models`, `pi-mcp` |
@@ -63,6 +65,30 @@ Commit a `harness.json` at the root of the project:
 A spec can only pick names from this repo. URLs, paths, hooks, and settings are rejected, so a project can't make a machine install arbitrary code. To add a third-party source, add it to `upstream.json` here first.
 
 Everything `apply` generates stays out of the project's git history through `.git/info/exclude`.
+
+## Presets
+
+A preset is a named list of catalog skills in `presets/`, such as `cloudflare` or `astryx`. A project's `harness.json` can use presets through `apply`, which enables them for that repo only. `install --preset` enables them for the whole machine, which suits a machine that serves one kind of project.
+
+## Claude cloud sessions
+
+Cloud sessions don't read this machine's setup, and `harness.json` can't change a cloud environment, so the environment's setup script chooses the presets. Paste this into the environment's **Setup script**, with a commit from this repo:
+
+```bash
+#!/bin/bash
+AI_REF=<commit>
+{
+  git clone https://github.com/ricevind/ai "$HOME/ai" &&
+    git -C "$HOME/ai" checkout --detach "$AI_REF" &&
+    node "$HOME/ai/setup.mjs" install --profile sandbox --preset cloudflare,astryx --harness claude </dev/null
+  echo "setup exit=$?"
+} > /var/tmp/ai-setup.log 2>&1
+exit 0
+```
+
+- The script exits 0 so that a failed install doesn't block the session. If skills are missing, read `/var/tmp/ai-setup.log` or run `node ~/ai/setup.mjs check --preset cloudflare,astryx --harness claude`.
+- The environment caches the result, so a new `AI_REF` only arrives when you edit the script.
+- Writing to `~/.claude` from a setup script works, but Claude's docs don't describe it for skills and plugins, so it could change.
 
 ## Skills
 
@@ -84,7 +110,7 @@ Upstream skills and pi packages declare the same fields in `upstream.json`.
 | `global`, this repo | `/ai:<skill>`, or `/ai-local:<skill>` and `/ai-remote:<skill>` for machine-specific skills | Part of this package |
 | `global`, upstream | Its own plugin, such as `/herdr:herdr` | Package pinned in user settings |
 | `opt-in`, this repo | Copied to the project's `.claude/skills/` | Copied to the project's `.pi/skills/` |
-| `opt-in`, upstream | Plugin enabled for that project, such as `/cloudflare:wrangler` | Package pinned in `.pi/settings.json` |
+| `opt-in`, upstream | One plugin per skill, enabled for that project, such as `/wrangler:wrangler` | Package filtered to the chosen skills, pinned in `.pi/settings.json` |
 
 Pi only loads project skills and packages once you trust the project. Headless runs need `pi --approve`. `setup.mjs` never grants trust itself, so a repo can't approve itself, and `check` only loads project resources when you pass `--approve`.
 
@@ -123,6 +149,7 @@ node --test setup.test.mjs
 package.json                      generated pi manifest
 upstream.json                     third-party skills and packages
 upstream.lock.json                pinned commits and versions
+presets/                          named skill sets
 setup.mjs                         install, apply, check, update, generate
 harness.schema.json               schema for project specs
 skills/                           skills owned by this repo

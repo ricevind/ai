@@ -9,6 +9,8 @@ import {
 	globalClaudePlugins,
 	deepMerge,
 	loadCatalog,
+	loadPresets,
+	piUpstreamEntries,
 	packageIdentity,
 	parseSkillMetadata,
 	replaceManagedPackages,
@@ -42,7 +44,7 @@ function fixture() {
 		JSON.stringify({
 			skills: [
 				{ name: "subdir", repo: "o/r", path: "skills/subdir", harness: "claude pi", scope: "global", machine: "local remote" },
-				{ name: "whole", repo: "o/w", harness: "claude pi", scope: "opt-in", machine: "local remote" },
+				{ name: "whole", repo: "o/r", path: "skills/whole", harness: "claude pi", scope: "opt-in", machine: "local remote" },
 			],
 			piPackages: [],
 		}),
@@ -65,9 +67,9 @@ test("parseSkillMetadata rejects missing or invalid metadata", () => {
 
 test("loadCatalog rejects a name declared twice for one harness but allows disjoint harnesses", () => {
 	const root = fixture();
-	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "claude", scope: "global", machine: "local remote" }], piPackages: [] }));
+	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", path: "p", harness: "claude", scope: "global", machine: "local remote" }], piPackages: [] }));
 	assert.equal(loadCatalog(root).skills.filter((skill) => skill.name === "pi-global").length, 2);
-	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "pi", scope: "global", machine: "local remote" }], piPackages: [] }));
+	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", path: "p", harness: "pi", scope: "global", machine: "local remote" }], piPackages: [] }));
 	assert.throws(() => loadCatalog(root), /declared twice/);
 });
 
@@ -79,7 +81,7 @@ test("buildMarketplace puts own global skills in ai and pins upstream plugins", 
 	assert.deepEqual(ai.commands, ["./commands/hello.md"]);
 	assert.deepEqual(subdir.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/subdir", sha: "a".repeat(40) });
 	assert.deepEqual(subdir.skills, ["./"]);
-	assert.deepEqual(whole, { name: "whole", source: { source: "url", url: "https://github.com/o/w.git", sha: "b".repeat(40) } });
+	assert.deepEqual(whole.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/whole", sha: "b".repeat(40) });
 });
 
 test("buildMarketplace fails when an upstream skill isn't locked", () => {
@@ -162,4 +164,33 @@ test("listExtensions includes local-only extensions in the pi manifest", () => {
 	const { pi } = buildPiManifest(loadCatalog(root), root);
 	assert.ok(pi.extensions.includes("./pi/extensions-local/guard.ts"));
 	assert.deepEqual(validateSpec({ version: 1, harnesses: ["pi"], extensions: ["guard"] }, loadCatalog(root), root), []);
+});
+
+test("piUpstreamEntries gives one entry per repo so pi doesn't drop skills", () => {
+	const skills = [
+		{ repo: "o/r", path: "skills/a", sha: "1" },
+		{ repo: "o/r", path: "skills/b", sha: "1" },
+		{ repo: "o/x", path: "skills/c", sha: "2" },
+	];
+	assert.deepEqual(
+		piUpstreamEntries(skills).map(({ source, skills }) => [source, skills]),
+		[
+			["git:github.com/o/r@1", ["skills/a", "skills/b"]],
+			["git:github.com/o/x@2", ["skills/c"]],
+		],
+	);
+});
+
+test("presets combine without duplicates and are validated against the catalog", () => {
+	const root = fixture();
+	fs.mkdirSync(path.join(root, "presets"));
+	fs.writeFileSync(path.join(root, "presets", "one.json"), JSON.stringify({ skills: ["whole", "pi-opt-in"] }));
+	fs.writeFileSync(path.join(root, "presets", "two.json"), JSON.stringify({ skills: ["whole", "opt-in-own"] }));
+	fs.writeFileSync(path.join(root, "presets", "bad.json"), JSON.stringify({ skills: ["missing"] }));
+	const catalog = loadCatalog(root);
+	assert.deepEqual(loadPresets(["one", "two"], root), ["whole", "pi-opt-in", "opt-in-own"]);
+	assert.deepEqual(validateSpec({ version: 1, harnesses: ["pi"], presets: ["one"] }, catalog, root), []);
+	assert.match(validateSpec({ version: 1, harnesses: ["pi"], presets: ["bad"] }, catalog, root).join(), /unknown skill: missing/);
+	assert.match(validateSpec({ version: 1, harnesses: ["pi"], presets: ["nope"] }, catalog, root).join(), /unknown preset/);
+	assert.match(validateSpec({ version: 1, harnesses: ["pi"], presets: ["../../etc/passwd"] }, catalog, root).join(), /unknown preset/);
 });

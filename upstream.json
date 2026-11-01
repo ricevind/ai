@@ -3,7 +3,17 @@
     { "name": "herdr", "repo": "herdrdev/herdr", "path": "skills/herdr", "harness": "claude pi", "scope": "global", "machine": "local remote" },
     { "name": "modern-web-guidance", "repo": "GoogleChrome/modern-web-guidance", "path": "skills/modern-web-guidance", "harness": "claude pi", "scope": "global", "machine": "local remote" },
     { "name": "frontend-design", "repo": "anthropics/claude-plugins-official", "path": "plugins/frontend-design/skills/frontend-design", "harness": "claude", "scope": "global", "machine": "local remote" },
-    { "name": "cloudflare", "repo": "cloudflare/skills", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" }
+    { "name": "cloudflare", "repo": "cloudflare/skills", "path": "skills/cloudflare", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "workers-best-practices", "repo": "cloudflare/skills", "path": "skills/workers-best-practices", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "wrangler", "repo": "cloudflare/skills", "path": "skills/wrangler", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "cf-cli", "repo": "cloudflare/skills", "path": "skills/cf-cli", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "durable-objects", "repo": "cloudflare/skills", "path": "skills/durable-objects", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "agents-sdk", "repo": "cloudflare/skills", "path": "skills/agents-sdk", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "cloudflare-email-service", "repo": "cloudflare/skills", "path": "skills/cloudflare-email-service", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "turnstile-spin", "repo": "cloudflare/skills", "path": "skills/turnstile-spin", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "web-perf", "repo": "cloudflare/skills", "path": "skills/web-perf", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "workers-profiling", "repo": "cloudflare/skills", "path": "skills/workers-profiling", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "sandbox-next", "repo": "cloudflare/skills", "path": "skills/sandbox-next", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" }
   ],
   "piPackages": [
     { "npm": "@earendil-works/pi-voice", "machine": "local" }

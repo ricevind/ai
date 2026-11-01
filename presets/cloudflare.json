@@ -1,0 +1,16 @@
+{
+  "skills": [
+    "cloudflare",
+    "workers-best-practices",
+    "wrangler",
+    "cf-cli",
+    "durable-objects",
+    "agents-sdk",
+    "cloudflare-email-service",
+    "turnstile-spin",
+    "web-perf",
+    "workers-profiling",
+    "sandbox-next",
+    "cloudflare-effect"
+  ]
+}

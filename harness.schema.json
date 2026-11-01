@@ -3,16 +3,85 @@
   "title": "Harness specification",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "harnesses"],
+  "required": [
+    "version",
+    "harnesses"
+  ],
   "properties": {
-    "version": { "const": 1 },
-    "aiRef": { "type": "string", "description": "Branch, tag, or commit of the ai repo this project needs." },
-    "harnesses": { "type": "array", "items": { "enum": ["claude", "pi"] }, "minItems": 1, "uniqueItems": true },
-    "global": { "type": "boolean", "default": true, "description": "Set to false to skip machine-wide skills on a machine that doesn't have them yet." },
-    "skills": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Catalog skill names to enable for this repo." },
-    "workflows": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Pi only. Prompt names to enable." },
-    "extensions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true, "description": "Pi only. Extension names to enable." },
-    "config": { "type": "array", "items": { "enum": ["instructions", "pi-models", "pi-mcp"] }, "uniqueItems": true },
-    "env": { "type": "array", "items": { "type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$" }, "uniqueItems": true, "description": "Names of environment variables that must be set. Never values." }
+    "version": {
+      "const": 1
+    },
+    "aiRef": {
+      "type": "string",
+      "description": "Branch, tag, or commit of the ai repo this project needs."
+    },
+    "harnesses": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "claude",
+          "pi"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "global": {
+      "type": "boolean",
+      "default": true,
+      "description": "Set to false to skip machine-wide skills on a machine that doesn't have them yet."
+    },
+    "presets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Named skill sets from the ai repo's presets/ directory."
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Catalog skill names to enable for this repo."
+    },
+    "workflows": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Pi only. Prompt names to enable."
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "description": "Pi only. Extension names to enable."
+    },
+    "config": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "instructions",
+          "pi-models",
+          "pi-mcp"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "env": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z_][A-Z0-9_]*$"
+      },
+      "uniqueItems": true,
+      "description": "Names of environment variables that must be set. Never values."
+    }
   }
 }

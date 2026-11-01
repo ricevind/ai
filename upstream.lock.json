@@ -3,7 +3,17 @@
     "herdr": "ee5bfb5041bb3e4a49d591c72308aae3c81ecdde",
     "modern-web-guidance": "4f2b13e25c5815b3f080ca0d983e828d96561a0f",
     "frontend-design": "a7ba5b93db0c7c8d17f3f1d25853adca79598a1a",
-    "cloudflare": "1a33048817d06df12882cb881dfc754e7039954a"
+    "cloudflare": "1a33048817d06df12882cb881dfc754e7039954a",
+    "workers-best-practices": "1a33048817d06df12882cb881dfc754e7039954a",
+    "wrangler": "1a33048817d06df12882cb881dfc754e7039954a",
+    "cf-cli": "1a33048817d06df12882cb881dfc754e7039954a",
+    "durable-objects": "1a33048817d06df12882cb881dfc754e7039954a",
+    "agents-sdk": "1a33048817d06df12882cb881dfc754e7039954a",
+    "cloudflare-email-service": "1a33048817d06df12882cb881dfc754e7039954a",
+    "turnstile-spin": "1a33048817d06df12882cb881dfc754e7039954a",
+    "web-perf": "1a33048817d06df12882cb881dfc754e7039954a",
+    "workers-profiling": "1a33048817d06df12882cb881dfc754e7039954a",
+    "sandbox-next": "1a33048817d06df12882cb881dfc754e7039954a"
   },
   "npm": {
     "@earendil-works/pi-voice": "0.2.0"
