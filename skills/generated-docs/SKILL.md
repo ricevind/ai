@@ -4,6 +4,7 @@ description: Save generated HTML pages, reports, guides, and other standalone do
 metadata:
   harness: pi
   scope: global
+  machine: local remote
 ---
 
 Save the document to `~/generated-docs/<descriptive-kebab-case-name>.<ext>`, creating the directory if it doesn't exist.

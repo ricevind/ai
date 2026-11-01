@@ -5,6 +5,7 @@ license: Complete terms in LICENSE.txt
 metadata:
   harness: pi
   scope: global
+  machine: local remote
 ---
 
 # Frontend Design

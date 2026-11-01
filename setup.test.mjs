@@ -6,6 +6,7 @@ import { test } from "node:test";
 import {
 	buildMarketplace,
 	buildPiManifest,
+	globalClaudePlugins,
 	deepMerge,
 	loadCatalog,
 	packageIdentity,
@@ -14,13 +15,14 @@ import {
 	validateSpec,
 } from "./setup.mjs";
 
-const skillFile = (harness, scope) => `---\nname: x\ndescription: y\nmetadata:\n  harness: ${harness}\n  scope: ${scope}\n---\nbody\n`;
+const skillFile = (harness, scope, machine = "local remote") =>
+	`---\nname: x\ndescription: y\nmetadata:\n  harness: ${harness}\n  scope: ${scope}\n  machine: ${machine}\n---\nbody\n`;
 
 function fixture() {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "ai-harness-test-"));
-	const addSkill = (name, harness, scope) => {
+	const addSkill = (name, harness, scope, machine) => {
 		fs.mkdirSync(path.join(root, "skills", name), { recursive: true });
-		fs.writeFileSync(path.join(root, "skills", name, "SKILL.md"), skillFile(harness, scope));
+		fs.writeFileSync(path.join(root, "skills", name, "SKILL.md"), skillFile(harness, scope, machine));
 	};
 	addSkill("shared-global", "claude pi", "global");
 	addSkill("claude-global", "claude", "global");
@@ -39,8 +41,8 @@ function fixture() {
 		path.join(root, "upstream.json"),
 		JSON.stringify({
 			skills: [
-				{ name: "subdir", repo: "o/r", path: "skills/subdir", harness: "claude pi", scope: "global" },
-				{ name: "whole", repo: "o/w", harness: "claude pi", scope: "opt-in" },
+				{ name: "subdir", repo: "o/r", path: "skills/subdir", harness: "claude pi", scope: "global", machine: "local remote" },
+				{ name: "whole", repo: "o/w", harness: "claude pi", scope: "opt-in", machine: "local remote" },
 			],
 			piPackages: [],
 		}),
@@ -50,20 +52,22 @@ function fixture() {
 }
 
 test("parseSkillMetadata reads harness and scope", () => {
-	assert.deepEqual(parseSkillMetadata(skillFile("claude pi", "opt-in"), "x"), { harnesses: ["claude", "pi"], scope: "opt-in" });
+	assert.deepEqual(parseSkillMetadata(skillFile("claude pi", "opt-in"), "x"), { harnesses: ["claude", "pi"], scope: "opt-in", machines: ["local", "remote"] });
 });
 
 test("parseSkillMetadata rejects missing or invalid metadata", () => {
 	assert.throws(() => parseSkillMetadata("---\nname: x\n---\n", "x"), /metadata.harness/);
 	assert.throws(() => parseSkillMetadata(skillFile("codex", "global"), "x"), /metadata.harness/);
 	assert.throws(() => parseSkillMetadata(skillFile("pi", "sometimes"), "x"), /metadata.scope/);
+	assert.throws(() => parseSkillMetadata(skillFile("pi", "global", "moon"), "x"), /metadata.machine/);
+	assert.throws(() => parseSkillMetadata("---\nname: x\nmetadata:\n  harness: pi\n  scope: global\n---\n", "x"), /metadata.machine/);
 });
 
 test("loadCatalog rejects a name declared twice for one harness but allows disjoint harnesses", () => {
 	const root = fixture();
-	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "claude", scope: "global" }], piPackages: [] }));
+	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "claude", scope: "global", machine: "local remote" }], piPackages: [] }));
 	assert.equal(loadCatalog(root).skills.filter((skill) => skill.name === "pi-global").length, 2);
-	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "pi", scope: "global" }], piPackages: [] }));
+	fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify({ skills: [{ name: "pi-global", repo: "o/r", harness: "pi", scope: "global", machine: "local remote" }], piPackages: [] }));
 	assert.throws(() => loadCatalog(root), /declared twice/);
 });
 
@@ -137,4 +141,25 @@ test("replaceManagedPackages keeps user entries, drops stale ones, and updates p
 	const packages = ["npm:user-package", "git:github.com/o/old@1", "git:github.com/o/r@1"];
 	const next = replaceManagedPackages(packages, ["git:github.com/o/old", "git:github.com/o/r"], ["git:github.com/o/r@2"]);
 	assert.deepEqual(next, ["npm:user-package", "git:github.com/o/r@2"]);
+});
+
+test("machine-only global skills get their own Claude plugin", () => {
+	const root = fixture();
+	fs.mkdirSync(path.join(root, "skills", "mac-only"));
+	fs.writeFileSync(path.join(root, "skills", "mac-only", "SKILL.md"), skillFile("claude", "global", "local"));
+	const catalog = loadCatalog(root);
+	const { plugins } = buildMarketplace(catalog, root);
+	assert.deepEqual(plugins.find(({ name }) => name === "ai-local").skills, ["./skills/mac-only"]);
+	assert.ok(!plugins.find(({ name }) => name === "ai").skills.includes("./skills/mac-only"));
+	assert.ok(globalClaudePlugins(catalog, "local").includes("ai-local"));
+	assert.ok(!globalClaudePlugins(catalog, "remote").includes("ai-local"));
+});
+
+test("listExtensions includes local-only extensions in the pi manifest", () => {
+	const root = fixture();
+	fs.mkdirSync(path.join(root, "pi", "extensions-local"));
+	fs.writeFileSync(path.join(root, "pi", "extensions-local", "guard.ts"), "");
+	const { pi } = buildPiManifest(loadCatalog(root), root);
+	assert.ok(pi.extensions.includes("./pi/extensions-local/guard.ts"));
+	assert.deepEqual(validateSpec({ version: 1, harnesses: ["pi"], extensions: ["guard"] }, loadCatalog(root), root), []);
 });

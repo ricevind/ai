@@ -4,6 +4,7 @@ description: Author, review, and set up styles with StyleX (@stylexjs/stylex), M
 metadata:
   harness: claude pi
   scope: opt-in
+  machine: local remote
 ---
 
 # StyleX

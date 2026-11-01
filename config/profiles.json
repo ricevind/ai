@@ -1,4 +1,4 @@
 {
-  "workstation": { "config": ["instructions", "claude-settings", "pi-settings", "pi-models", "pi-mcp", "pi-voice"] },
-  "sandbox": { "config": ["instructions"] }
+  "workstation": { "machine": "local", "config": ["instructions", "claude-settings", "pi-settings", "pi-models", "pi-mcp", "pi-voice"] },
+  "sandbox": { "machine": "remote", "config": ["instructions"] }
 }

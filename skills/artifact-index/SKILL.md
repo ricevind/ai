@@ -4,6 +4,7 @@ description: Keep an index of published Claude artifacts in ~/generated-docs/cla
 metadata:
   harness: claude
   scope: global
+  machine: local remote
 ---
 
 The index lists where artifacts are. It never stores their content.

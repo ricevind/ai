@@ -11,6 +11,7 @@
   },
   "pi": {
     "extensions": [
+      "./pi/extensions-local/longrun-guard.ts",
       "./pi/extensions/oneline-tools.ts",
       "./pi/extensions/subagent/index.ts",
       "./pi/extensions/system-prompt.ts",
@@ -20,7 +21,8 @@
     "skills": [
       "./skills/frontend-design",
       "./skills/generated-docs",
-      "./skills/ios-notes-and-reminders"
+      "./skills/ios-notes-and-reminders",
+      "./skills/longrun"
     ],
     "prompts": [
       "./commands/git-message.md",

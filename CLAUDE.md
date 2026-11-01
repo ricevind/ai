@@ -5,7 +5,8 @@ Central repository for Claude Code and pi customizations. `setup.mjs` installs i
 ## Rules
 
 - Create new skills, commands, agents, and extensions in this repo, never directly in harness directories.
-- Keep each skill self-contained in its own directory under `skills/`, with `metadata.harness` and `metadata.scope` in its frontmatter.
+- Keep each skill self-contained in its own directory under `skills/`, with `metadata.harness`, `metadata.scope`, and `metadata.machine` in its frontmatter.
+- Put pi extensions that only make sense on your own machine in `pi/extensions-local/`.
 - Add third-party skills and packages to `upstream.json`, not as copies.
 - Don't edit `.claude-plugin/marketplace.json` or `package.json` by hand. Run `node setup.mjs generate`, and commit the result.
 - Never commit credentials. This repo is public.

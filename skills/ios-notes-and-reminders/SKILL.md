@@ -4,6 +4,7 @@ description: Create notes in Apple Notes and reminders in Apple Reminders using 
 metadata:
   harness: claude pi
   scope: global
+  machine: local remote
 ---
 
 # Apple Notes & Reminders via osascript

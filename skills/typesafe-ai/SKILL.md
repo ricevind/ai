@@ -15,6 +15,7 @@ description: >
 metadata:
   harness: pi
   scope: opt-in
+  machine: local remote
 ---
 
 # Build with TypeSafe

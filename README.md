@@ -66,19 +66,22 @@ Everything `apply` generates stays out of the project's git history through `.gi
 
 ## Skills
 
-Every skill says which harness it's for and when it loads. For skills in this repo, that goes in the `SKILL.md` frontmatter:
+Every skill says which harness it's for, when it loads, and which machines get it. For skills in this repo, that goes in the `SKILL.md` frontmatter:
 
 ```yaml
 metadata:
   harness: claude pi
   scope: global
+  machine: local remote
 ```
 
-Upstream skills declare the same `harness` and `scope` fields in `upstream.json`.
+Upstream skills and pi packages declare the same fields in `upstream.json`.
+
+`machine` follows the install profile: `workstation` is `local` and `sandbox` is `remote`. A spec can list a skill the machine doesn't get, and `apply` skips it with a message, so one `harness.json` works everywhere. Pi extensions have no frontmatter, so local-only ones go in `pi/extensions-local/`.
 
 | Scope | Claude | Pi |
 |---|---|---|
-| `global`, this repo | `/ai:<skill>` | Part of this package |
+| `global`, this repo | `/ai:<skill>`, or `/ai-local:<skill>` and `/ai-remote:<skill>` for machine-specific skills | Part of this package |
 | `global`, upstream | Its own plugin, such as `/herdr:herdr` | Package pinned in user settings |
 | `opt-in`, this repo | Copied to the project's `.claude/skills/` | Copied to the project's `.pi/skills/` |
 | `opt-in`, upstream | Plugin enabled for that project, such as `/cloudflare:wrangler` | Package pinned in `.pi/settings.json` |
@@ -124,6 +127,6 @@ setup.mjs                         install, apply, check, update, generate
 harness.schema.json               schema for project specs
 skills/                           skills owned by this repo
 commands/                         commands for Claude, prompts for pi
-pi/                               pi extensions, prompts, and agents
+pi/                               pi extensions, local-only extensions, prompts, and agents
 config/                           instructions, settings, and profiles
 ```

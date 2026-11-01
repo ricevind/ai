@@ -4,6 +4,7 @@ description: Set up Meta's Astryx design system (React 19 + StyleX) in a new or 
 metadata:
   harness: claude pi
   scope: opt-in
+  machine: local remote
 ---
 
 # Astryx setup

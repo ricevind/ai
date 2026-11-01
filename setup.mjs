@@ -10,6 +10,11 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const MARKETPLACE = "ai";
 const HARNESSES = ["claude", "pi"];
 const SCOPES = ["global", "opt-in"];
+const MACHINES = ["local", "remote"];
+const EXTENSION_DIRS = [
+	{ dir: "pi/extensions", machines: MACHINES },
+	{ dir: "pi/extensions-local", machines: ["local"] },
+];
 const NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 const REF_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
 const ENV_PATTERN = /^[A-Z_][A-Z0-9_]*$/;
@@ -39,7 +44,8 @@ export function parseSkillMetadata(text, label) {
 	const block = frontmatter?.match(/^metadata:\r?\n((?:[ \t]+.*(?:\r?\n|$))*)/m)?.[1] ?? "";
 	const harness = block.match(/^\s+harness:\s*(.+?)\s*$/m)?.[1];
 	const scope = block.match(/^\s+scope:\s*(.+?)\s*$/m)?.[1];
-	return { harnesses: parseHarnesses(harness, label), scope: parseScope(scope, label) };
+	const machine = block.match(/^\s+machine:\s*(.+?)\s*$/m)?.[1];
+	return { harnesses: parseHarnesses(harness, label), scope: parseScope(scope, label), machines: parseMachines(machine, label) };
 }
 
 function parseHarnesses(value, label) {
@@ -53,6 +59,14 @@ function parseHarnesses(value, label) {
 function parseScope(value, label) {
 	if (!SCOPES.includes(value)) throw new SetupError(`${label}: metadata.scope must be one of ${SCOPES.join(", ")}`);
 	return value;
+}
+
+function parseMachines(value, label) {
+	const machines = value?.split(/\s+/).filter(Boolean) ?? [];
+	if (machines.length === 0 || machines.some((machine) => !MACHINES.includes(machine))) {
+		throw new SetupError(`${label}: metadata.machine must list ${MACHINES.join(" and/or ")}`);
+	}
+	return machines;
 }
 
 export function loadCatalog(root = ROOT) {
@@ -77,6 +91,7 @@ export function loadCatalog(root = ROOT) {
 			sha: lock.skills[skill.name],
 			harnesses: parseHarnesses(skill.harness, skill.name),
 			scope: parseScope(skill.scope, skill.name),
+			machines: parseMachines(skill.machine, skill.name),
 		};
 	});
 	const skills = [...own, ...external];
@@ -85,7 +100,8 @@ export function loadCatalog(root = ROOT) {
 		const duplicate = names.find((name, index) => names.indexOf(name) !== index);
 		if (duplicate) throw new SetupError(`${duplicate}: declared twice for ${harness}`);
 	}
-	return { skills, piPackages: upstream.piPackages, lock };
+	const piPackages = upstream.piPackages.map((item) => ({ npm: item.npm, machines: parseMachines(item.machine, item.npm) }));
+	return { skills, piPackages, lock };
 }
 
 const listFiles = (root, dir, extension) =>
@@ -98,21 +114,17 @@ const listFiles = (root, dir, extension) =>
 		: [];
 
 function listExtensions(root) {
-	const dir = path.join(root, "pi", "extensions");
-	if (!fs.existsSync(dir)) return [];
-	return fs
-		.readdirSync(dir, { withFileTypes: true })
-		.flatMap((entry) => {
-			if (entry.isFile() && entry.name.endsWith(".ts")) return [entry.name.slice(0, -3)];
-			return entry.isDirectory() && fs.existsSync(path.join(dir, entry.name, "index.ts")) ? [entry.name] : [];
-		})
-		.sort();
+	return EXTENSION_DIRS.flatMap(({ dir, machines }) => {
+		const absolute = path.join(root, dir);
+		if (!fs.existsSync(absolute)) return [];
+		return fs.readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
+			if (entry.isFile() && entry.name.endsWith(".ts")) return [{ name: entry.name.slice(0, -3), file: `${dir}/${entry.name}`, machines }];
+			return entry.isDirectory() && fs.existsSync(path.join(absolute, entry.name, "index.ts"))
+				? [{ name: entry.name, file: `${dir}/${entry.name}/index.ts`, machines }]
+				: [];
+		});
+	}).sort((left, right) => left.name.localeCompare(right.name));
 }
-
-const extensionPath = (root, name) =>
-	fs.existsSync(path.join(root, "pi", "extensions", name, "index.ts"))
-		? `pi/extensions/${name}/index.ts`
-		: `pi/extensions/${name}.ts`;
 
 // Claude clones the owner/repo shorthand over SSH, which fails on machines without SSH keys.
 const repoUrl = (repo) => `https://github.com/${repo}.git`;
@@ -122,11 +134,32 @@ const requireSha = (skill) => {
 	return skill.sha;
 };
 
+const isOwnGlobal = (skill, harness) => skill.origin === "own" && skill.scope === "global" && skill.harnesses.includes(harness);
+const isUpstreamGlobal = (skill, harness) => skill.origin === "upstream" && skill.scope === "global" && skill.harnesses.includes(harness);
+
+// Claude plugins can't be filtered per machine, so machine-specific skills need their own plugin.
+const machineOnly = (catalog, machine) =>
+	catalog.skills.filter((skill) => isOwnGlobal(skill, "claude") && skill.machines.length === 1 && skill.machines[0] === machine);
+
+export function globalClaudePlugins(catalog, machine) {
+	return [
+		"ai",
+		...(machineOnly(catalog, machine).length ? [`ai-${machine}`] : []),
+		...catalog.skills.filter((skill) => isUpstreamGlobal(skill, "claude") && skill.machines.includes(machine)).map((skill) => skill.name),
+	];
+}
+
 export function buildMarketplace(catalog, root = ROOT) {
-	const ownGlobal = catalog.skills
-		.filter((skill) => skill.origin === "own" && skill.scope === "global" && skill.harnesses.includes("claude"))
-		.map((skill) => `./${skill.dir}`)
-		.sort();
+	const skillPaths = (skills) => skills.map((skill) => `./${skill.dir}`).sort();
+	const shared = catalog.skills.filter((skill) => isOwnGlobal(skill, "claude") && skill.machines.length === MACHINES.length);
+	const machinePlugins = MACHINES.filter((machine) => machineOnly(catalog, machine).length).map((machine) => ({
+		name: `ai-${machine}`,
+		description: `Global skills for ${machine} machines`,
+		source: "./",
+		strict: false,
+		skills: skillPaths(machineOnly(catalog, machine)),
+		commands: [],
+	}));
 	const upstream = catalog.skills
 		.filter((skill) => skill.origin === "upstream" && skill.harnesses.includes("claude"))
 		.map((skill) =>
@@ -149,9 +182,10 @@ export function buildMarketplace(catalog, root = ROOT) {
 				description: "Global skills and commands",
 				source: "./",
 				strict: false,
-				skills: ownGlobal,
+				skills: skillPaths(shared),
 				commands: listFiles(root, "commands", ".md"),
 			},
+			...machinePlugins,
 			...upstream,
 		],
 	};
@@ -164,9 +198,9 @@ export function buildPiManifest(catalog, root = ROOT) {
 		description: "Personal pi extensions, skills, and prompts. Generated by setup.mjs.",
 		peerDependencies: Object.fromEntries(PI_HOST_PACKAGES.map((name) => [name, "*"])),
 		pi: {
-			extensions: listExtensions(root).map((name) => `./${extensionPath(root, name)}`),
+			extensions: listExtensions(root).map(({ file }) => `./${file}`),
 			skills: catalog.skills
-				.filter((skill) => skill.origin === "own" && skill.scope === "global" && skill.harnesses.includes("pi"))
+				.filter((skill) => isOwnGlobal(skill, "pi"))
 				.map((skill) => `./${skill.dir}`)
 				.sort(),
 			prompts: [...listFiles(root, "commands", ".md"), ...listFiles(root, "pi/prompts", ".md")],
@@ -212,7 +246,7 @@ export function validateSpec(spec, catalog, root = ROOT) {
 	for (const name of stringList("workflows")) {
 		if (!workflows.some((file) => path.basename(file, ".md") === name)) errors.push(`unknown workflow: ${name}`);
 	}
-	const extensions = listExtensions(root);
+	const extensions = listExtensions(root).map(({ name }) => name);
 	for (const name of stringList("extensions")) if (!extensions.includes(name)) errors.push(`unknown extension: ${name}`);
 	for (const name of stringList("config")) if (!SPEC_CONFIG.includes(name)) errors.push(`unknown config: ${name}`);
 	for (const name of stringList("env")) if (!ENV_PATTERN.test(name)) errors.push(`invalid env name: ${name}`);
@@ -321,36 +355,45 @@ function removePlugin(name, scope, cwd) {
 	run("claude", ["plugin", "uninstall", `${name}@${MARKETPLACE}`, "--scope", scope], cwd ? { cwd } : {});
 }
 
-function globalPiEntries(catalog, profile) {
-	const upstream = catalog.skills
-		.filter((skill) => skill.origin === "upstream" && skill.scope === "global" && skill.harnesses.includes("pi"))
-		.map(piUpstreamEntry);
+const readProfiles = () => readJson(path.join(ROOT, "config", "profiles.json"), {});
+const currentMachine = (state) => readProfiles()[state.machine?.profile]?.machine ?? "remote";
+
+function aiPackageEntry(catalog, machine, { global = true, extensions, workflows } = {}) {
+	const manifest = buildPiManifest(catalog);
+	const allowed = listExtensions(ROOT).filter((extension) => extension.machines.includes(machine));
+	const entry = {
+		source: ROOT,
+		skills: global ? catalog.skills.filter((skill) => isOwnGlobal(skill, "pi") && skill.machines.includes(machine)).map((skill) => skill.dir).sort() : [],
+		extensions: allowed.filter(({ name }) => !extensions || extensions.includes(name)).map(({ file }) => file),
+	};
+	if (!workflows) return entry;
+	return { ...entry, prompts: manifest.pi.prompts.map((file) => file.slice(2)).filter((file) => workflows.includes(path.basename(file, ".md"))) };
+}
+
+function globalPiEntries(catalog, machine) {
+	const upstream = catalog.skills.filter((skill) => isUpstreamGlobal(skill, "pi") && skill.machines.includes(machine)).map(piUpstreamEntry);
 	const npm = catalog.piPackages
-		.filter((item) => item.profiles.includes(profile))
+		.filter((item) => item.machines.includes(machine))
 		.map((item) => {
 			const version = catalog.lock.npm[item.npm];
 			if (!version) throw new SetupError(`${item.npm}: missing from upstream.lock.json, run setup.mjs update`);
 			return `npm:${item.npm}@${version}`;
 		});
-	return [ROOT, ...upstream, ...npm];
+	return [aiPackageEntry(catalog, machine), ...upstream, ...npm];
 }
 
 async function install({ profile, harnesses, force }) {
-	const profiles = readJson(path.join(ROOT, "config", "profiles.json"), {});
+	const profiles = readProfiles();
 	if (!profiles[profile]) throw new SetupError(`Unknown profile: ${profile}`);
 	requireCommands(harnesses);
 	const catalog = loadCatalog();
 	const state = readJson(statePath(), { projects: {} });
+	const { machine } = profiles[profile];
 	await applyConfig(profiles[profile].config, harnesses, force);
 
 	if (harnesses.includes("claude")) {
 		ensureMarketplace();
-		const wanted = [
-			"ai",
-			...catalog.skills
-				.filter((skill) => skill.origin === "upstream" && skill.scope === "global" && skill.harnesses.includes("claude"))
-				.map((skill) => skill.name),
-		];
+		const wanted = globalClaudePlugins(catalog, machine);
 		for (const name of (state.machine?.claudePlugins ?? []).filter((name) => !wanted.includes(name))) removePlugin(name, "user");
 		for (const name of wanted) ensurePlugin(name, "user");
 		state.machine = { ...state.machine, claudePlugins: wanted };
@@ -358,7 +401,7 @@ async function install({ profile, harnesses, force }) {
 	if (harnesses.includes("pi")) {
 		const settingsPath = path.join(piDir(), "settings.json");
 		const settings = readJson(settingsPath, {});
-		const entries = globalPiEntries(catalog, profile);
+		const entries = globalPiEntries(catalog, machine);
 		settings.packages = replaceManagedPackages(settings.packages ?? [], state.machine?.piPackages ?? [], entries);
 		writeFile(settingsPath, toJson(settings));
 		run("pi", ["update", "--extensions"], { cwd: os.homedir() });
@@ -409,11 +452,11 @@ function syncCopiedSkills(project, base, wanted, previous) {
 	}
 }
 
-function selectForHarness(spec, catalog, harness) {
+function selectForHarness(spec, catalog, harness, machine) {
 	const useGlobal = spec.global !== false;
 	return (spec.skills ?? [])
 		.map((name) => catalog.skills.find((skill) => skill.name === name && skill.harnesses.includes(harness)))
-		.filter((skill) => skill && !(useGlobal && skill.scope === "global"));
+		.filter((skill) => skill && skill.machines.includes(machine) && !(useGlobal && skill.scope === "global"));
 }
 
 function ensureAiRef(ref, checkout) {
@@ -451,12 +494,16 @@ async function apply({ specPath, checkout, force }) {
 	await applyConfig(spec.config ?? [], spec.harnesses, force);
 
 	const latest = readJson(statePath(), { projects: {} });
+	const machine = currentMachine(latest);
+	for (const name of spec.skills ?? []) {
+		if (!catalog.skills.some((skill) => skill.name === name && skill.machines.includes(machine))) console.log(`Skipped ${name}: not available on ${machine} machines`);
+	}
 	const previous = latest.projects[project] ?? {};
 	const next = {};
 	const excludes = [];
 
 	if (spec.harnesses.includes("claude")) {
-		const selected = selectForHarness(spec, catalog, "claude");
+		const selected = selectForHarness(spec, catalog, "claude", machine);
 		const plugins = selected.filter((skill) => skill.origin === "upstream").map((skill) => skill.name);
 		const copies = selected.filter((skill) => skill.origin === "own").map((skill) => skill.name);
 		for (const name of (previous.claudePlugins ?? []).filter((name) => !plugins.includes(name))) removePlugin(name, "local", project);
@@ -467,18 +514,12 @@ async function apply({ specPath, checkout, force }) {
 		excludes.push(".claude/settings.local.json", ...copies.map((name) => `.claude/skills/${name}`));
 	}
 	if (spec.harnesses.includes("pi")) {
-		const selected = selectForHarness(spec, catalog, "pi");
+		const selected = selectForHarness(spec, catalog, "pi", machine);
 		const copies = selected.filter((skill) => skill.origin === "own").map((skill) => skill.name);
 		syncCopiedSkills(project, ".pi/skills", copies, previous.piCopies ?? []);
 		const entries = selected.filter((skill) => skill.origin === "upstream").map(piUpstreamEntry);
 		if (spec.extensions || spec.workflows) {
-			const manifest = buildPiManifest(catalog);
-			entries.push({
-				source: ROOT,
-				skills: spec.global === false ? [] : manifest.pi.skills.map((file) => file.slice(2)),
-				extensions: (spec.extensions ?? []).map((name) => extensionPath(ROOT, name)),
-				prompts: manifest.pi.prompts.map((file) => file.slice(2)).filter((file) => (spec.workflows ?? []).includes(path.basename(file, ".md"))),
-			});
+			entries.push(aiPackageEntry(catalog, machine, { global: spec.global !== false, extensions: spec.extensions ?? [], workflows: spec.workflows ?? [] }));
 		}
 		const settingsPath = path.join(project, ".pi", "settings.json");
 		assertPlainDirectoryChain(project, ".pi/settings.json");
@@ -541,6 +582,7 @@ async function check({ specPath, harnesses: requested, approve }) {
 	const state = readJson(statePath(), { projects: {} });
 	const harnesses = spec?.harnesses ?? requested;
 	const useGlobal = spec?.global !== false;
+	const machine = currentMachine(state);
 
 	if (harnesses.includes("claude")) {
 		const plugins = claudePlugins(project);
@@ -549,11 +591,10 @@ async function check({ specPath, harnesses: requested, approve }) {
 			if (!plugin?.enabled || plugin.errors?.length) problems.push(`claude: ${name} is not loaded${plugin?.errors?.length ? `: ${JSON.stringify(plugin.errors)}` : ""}`);
 		};
 		if (useGlobal) {
-			expectEnabled("ai");
-			for (const skill of catalog.skills.filter((skill) => skill.origin === "upstream" && skill.scope === "global" && skill.harnesses.includes("claude"))) expectEnabled(skill.name);
+			for (const name of globalClaudePlugins(catalog, machine)) expectEnabled(name);
 		}
 		if (spec) {
-			for (const skill of selectForHarness(spec, catalog, "claude")) {
+			for (const skill of selectForHarness(spec, catalog, "claude", machine)) {
 				if (skill.origin === "upstream") expectEnabled(skill.name);
 				else if (!fs.existsSync(path.join(project, ".claude", "skills", skill.name, "SKILL.md"))) problems.push(`claude: ${skill.name} is missing from .claude/skills`);
 			}
@@ -566,10 +607,13 @@ async function check({ specPath, harnesses: requested, approve }) {
 			if (!loaded.has(name)) problems.push(`pi: ${name} is not loaded${where}`);
 		};
 		if (useGlobal) {
-			for (const skill of catalog.skills.filter((skill) => skill.scope === "global" && skill.harnesses.includes("pi"))) expectLoaded(skill.name, "");
+			for (const skill of catalog.skills.filter((skill) => skill.scope === "global" && skill.harnesses.includes("pi") && skill.machines.includes(machine))) expectLoaded(skill.name, "");
+			for (const skill of catalog.skills.filter((skill) => skill.scope === "global" && skill.harnesses.includes("pi") && !skill.machines.includes(machine))) {
+				if (loaded.has(skill.name)) problems.push(`pi: ${skill.name} should not load on ${machine} machines`);
+			}
 		}
 		if (spec) {
-			for (const skill of selectForHarness(spec, catalog, "pi")) {
+			for (const skill of selectForHarness(spec, catalog, "pi", machine)) {
 				if (skill.origin === "own" && !fs.existsSync(path.join(project, ".pi", "skills", skill.name, "SKILL.md"))) {
 					problems.push(`pi: ${skill.name} is missing from .pi/skills`);
 				} else if (approve && skill.origin === "own") {
