@@ -4,15 +4,19 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import {
+	buildInitialSpec,
 	buildMarketplace,
 	buildPiManifest,
 	globalClaudePlugins,
 	deepMerge,
+	findSpec,
+	formatCatalog,
 	loadCatalog,
 	loadPresets,
 	piUpstreamEntries,
 	packageIdentity,
 	parseSkillMetadata,
+	renderCliScript,
 	replaceManagedPackages,
 	validateSpec,
 } from "./setup.mjs";
@@ -193,4 +197,53 @@ test("presets combine without duplicates and are validated against the catalog",
 	assert.match(validateSpec({ version: 1, harnesses: ["pi"], presets: ["bad"] }, catalog, root).join(), /unknown skill: missing/);
 	assert.match(validateSpec({ version: 1, harnesses: ["pi"], presets: ["nope"] }, catalog, root).join(), /unknown preset/);
 	assert.match(validateSpec({ version: 1, harnesses: ["pi"], presets: ["../../etc/passwd"] }, catalog, root).join(), /unknown preset/);
+});
+
+test("findSpec finds the nearest spec and stops at the repo root", () => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), "ai-harness-spec-"));
+	const repo = path.join(root, "repo");
+	const nested = path.join(repo, "src", "deep");
+	fs.mkdirSync(path.join(repo, ".git"), { recursive: true });
+	fs.mkdirSync(nested, { recursive: true });
+	fs.writeFileSync(path.join(root, "harness.json"), "{}");
+	assert.equal(findSpec(nested, "/nowhere"), undefined);
+	fs.writeFileSync(path.join(repo, "harness.json"), "{}");
+	assert.equal(findSpec(nested, "/nowhere"), path.join(repo, "harness.json"));
+});
+
+test("findSpec doesn't search above the home directory", () => {
+	const home = fs.mkdtempSync(path.join(os.tmpdir(), "ai-harness-home-"));
+	const nested = path.join(home, "work");
+	fs.mkdirSync(nested);
+	fs.writeFileSync(path.join(path.dirname(home), "harness.json"), "{}");
+	try {
+		assert.equal(findSpec(nested, home), undefined);
+	} finally {
+		fs.rmSync(path.join(path.dirname(home), "harness.json"));
+	}
+});
+
+test("renderCliScript quotes the setup path", () => {
+	const script = renderCliScript("/home/o'neil/my ai/setup.mjs");
+	assert.match(script, /^#!\/bin\/sh\n/);
+	assert.ok(script.includes(`exec node '/home/o'\\''neil/my ai/setup.mjs' "$@"`));
+});
+
+test("formatCatalog lists skills and presets", () => {
+	const root = fixture();
+	fs.mkdirSync(path.join(root, "presets"));
+	fs.writeFileSync(path.join(root, "presets", "one.json"), JSON.stringify({ skills: ["whole"] }));
+	const output = formatCatalog(loadCatalog(root), ["one"], root);
+	assert.match(output, /^SKILL\s+HARNESS\s+SCOPE\s+MACHINE\s+SOURCE/);
+	assert.match(output, /whole\s+claude pi\s+opt-in\s+local remote\s+o\/r/);
+	assert.match(output, /shared-global\s+claude pi\s+global\s+local remote\s+this repo/);
+	assert.match(output, /one: whole/);
+});
+
+test("buildInitialSpec produces a valid spec", () => {
+	const root = fixture();
+	assert.deepEqual(buildInitialSpec(["pi"], []), { version: 1, harnesses: ["pi"] });
+	fs.mkdirSync(path.join(root, "presets"));
+	fs.writeFileSync(path.join(root, "presets", "one.json"), JSON.stringify({ skills: ["whole"] }));
+	assert.deepEqual(validateSpec(buildInitialSpec(["claude", "pi"], ["one"]), loadCatalog(root), root), []);
 });

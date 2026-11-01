@@ -24,21 +24,28 @@ node ~/ai/setup.mjs apply --spec /path/to/project/harness.json --checkout
 
 `apply` sets up the global skills first if this machine doesn't have them yet.
 
+Installing also adds the `air` command to `~/.local/bin`, a short form of `node setup.mjs` that works from any directory.
+
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `install [--profile workstation\|sandbox] [--preset name,name] [--harness claude,pi] [--force]` | Sets up global skills, extensions, and config for the machine, plus any presets |
-| `apply --spec <repo>/harness.json [--checkout] [--force]` | Adds a repo's opt-in skills to that repo only |
-| `check [--spec <repo>/harness.json] [--preset name,name] [--harness claude,pi] [--approve]` | Compares what's loaded with what's expected, and exits non-zero on a mismatch |
-| `update` | Refreshes `upstream.lock.json` and the generated manifests, for you to review and commit |
-| `generate` | Rebuilds `.claude-plugin/marketplace.json` and `package.json` |
+| `air install [--profile workstation\|sandbox] [--preset a,b] [--harness claude,pi] [--force]` | Sets up global skills, extensions, and config for the machine, plus any presets. Repeat runs reuse the last profile, presets, and harnesses |
+| `air apply [--spec <path>] [--checkout] [--force]` | Applies the nearest `harness.json` to its repo only |
+| `air check [--spec <path>] [--preset a,b] [--harness claude,pi] [--approve]` | Compares what's loaded with what's expected for this machine and the current repo, and exits non-zero on a mismatch |
+| `air update` | Refreshes `upstream.lock.json` and the generated manifests, for you to review and commit |
+| `air generate` | Rebuilds `.claude-plugin/marketplace.json` and `package.json` |
+| `air list` | Shows all skills and presets |
+| `air status` | Shows this machine's setup, the repos that opted in, and whether this clone is behind |
+| `air init [--preset a,b] [--harness claude,pi]` | Creates a `harness.json` in the current repo |
+
+`air` looks for `harness.json` from the current directory up to the repo root.
 
 Without a terminal, `install` and `apply` fail instead of overwriting a locally edited config file. Pass `--force` to overwrite it.
 
 ## Adding a project spec
 
-Commit a `harness.json` at the root of the project:
+Run `air init`, or commit a `harness.json` at the root of the project yourself:
 
 ```json
 {
@@ -117,10 +124,10 @@ Pi only loads project skills and packages once you trust the project. Headless r
 ## Updating
 
 ```sh
-node setup.mjs update
+air update
 git diff upstream.lock.json
 git commit -am "chore: update upstream skills"
-node setup.mjs install --profile workstation
+air install
 ```
 
 Upstream sources are pinned to commits, so nothing changes until you commit a new lock and re-run `install` or `apply`.
@@ -150,7 +157,7 @@ package.json                      generated pi manifest
 upstream.json                     third-party skills and packages
 upstream.lock.json                pinned commits and versions
 presets/                          named skill sets
-setup.mjs                         install, apply, check, update, generate
+setup.mjs                         the air command
 harness.schema.json               schema for project specs
 skills/                           skills owned by this repo
 commands/                         commands for Claude, prompts for pi
