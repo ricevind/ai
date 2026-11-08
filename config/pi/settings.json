@@ -6,7 +6,8 @@
   "defaultModel": "workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
   "enabledModels": [
     "cloudflare-ai-gateway/workers-ai/@cf/zai-org/glm-5.3-flash",
-    "cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017"
+    "cloudflare-ai-gateway/workers-ai/@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+    "cloudflare-ai-gateway/gpt-6.1-sol"
   ],
   "hideThinkingBlock": true,
   "externalEditor": "code --wait"
