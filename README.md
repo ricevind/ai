@@ -68,10 +68,17 @@ Run `air init`, or commit a `harness.json` at the root of the project yourself:
 | `config` | Any of `instructions`, `pi-models`, `pi-mcp` |
 | `workflows`, `extensions` | Pi only. Narrows which prompts and extensions load in this repo |
 | `env` | Names of variables that must be set. Never values |
+| `wiki` | `{ "sourceDirs": [...] }`. Turns on the wiki tooling for this repo. See [Wiki](#wiki) |
 
 A spec can only pick names from this repo. URLs, paths, hooks, and settings are rejected, so a project can't make a machine install arbitrary code. To add a third-party source, add it to `upstream.json` here first.
 
 Everything `apply` generates stays out of the project's git history through `.git/info/exclude`.
+
+## Wiki
+
+`"wiki": { "sourceDirs": ["src", "packages/api"] }` in `harness.json` turns on the `wiki` skill for the repo. `apply` then writes a generated `scripts/wiki.mjs`, which you commit, and installs the Claude Stop hook and the pi extension. `sourceDirs` lists the repo-relative directories whose changes the wiki tracks. It must be non-empty, with no duplicates, no absolute paths, and no `.` or `..` segments.
+
+The `ai` Claude plugin also carries a global fallback Stop hook. It nudges in any repo that has `docs/wiki/` and a `wiki` section in `harness.json` but no repo hook from `apply`, such as a cloud session, and does nothing elsewhere.
 
 ## Presets
 
@@ -94,6 +101,7 @@ exit 0
 ```
 
 - The script exits 0 so that a failed install doesn't block the session. If skills are missing, read `/var/tmp/ai-setup.log` or run `node ~/ai/setup.mjs check --preset cloudflare,astryx --harness claude`.
+- For a repo with a wiki, add the `wiki` preset, for example `--preset cloudflare,wiki`. The global fallback hook then nudges about stale pages.
 - The environment caches the result, so a new `AI_REF` only arrives when you edit the script.
 - Writing to `~/.claude` from a setup script works, but Claude's docs don't describe it for skills and plugins, so it could change.
 
@@ -162,5 +170,6 @@ harness.schema.json               schema for project specs
 skills/                           skills owned by this repo
 commands/                         commands for Claude, prompts for pi
 pi/                               pi extensions, local-only extensions, prompts, and agents
+pi/extensions-opt-in/             pi extensions a repo turns on from harness.json, such as wiki
 config/                           instructions, settings, and profiles
 ```

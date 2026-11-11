@@ -82,6 +82,27 @@
       },
       "uniqueItems": true,
       "description": "Names of environment variables that must be set. Never values."
+    },
+    "wiki": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceDirs"],
+      "properties": {
+        "sourceDirs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*$",
+            "not": {
+              "pattern": "(^|/)\\.\\.?(/|$)"
+            }
+          },
+          "description": "Repo-relative directories whose changes the wiki tracks. No '.' or '..' segments."
+        }
+      },
+      "description": "Turns on the wiki skill, a generated scripts/wiki.mjs, the Claude Stop hook, and the pi extension."
     }
   }
 }

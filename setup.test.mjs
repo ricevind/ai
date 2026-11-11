@@ -4,9 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import {
+	aiPackageEntry,
+	assertWikiScriptWritable,
 	buildInitialSpec,
 	buildMarketplace,
 	buildPiManifest,
+	canWriteGenerated,
+	GENERATED_MARKER,
 	globalClaudePlugins,
 	deepMerge,
 	findSpec,
@@ -16,9 +20,15 @@ import {
 	piUpstreamEntries,
 	packageIdentity,
 	parseSkillMetadata,
+	projectPiEntry,
 	renderCliScript,
+	renderGeneratedScript,
 	replaceManagedPackages,
 	validateSpec,
+	withoutWikiHook,
+	withPresets,
+	withWikiHook,
+	wikiHookCommand,
 } from "./setup.mjs";
 
 const skillFile = (harness, scope, machine = "local remote") =>
@@ -35,6 +45,7 @@ function fixture() {
 	addSkill("pi-global", "pi", "global");
 	addSkill("opt-in-own", "claude pi", "opt-in");
 	addSkill("pi-opt-in", "pi", "opt-in");
+	addSkill("wiki", "claude pi", "opt-in");
 	fs.mkdirSync(path.join(root, "skills", "synced"));
 	fs.mkdirSync(path.join(root, "commands"));
 	fs.writeFileSync(path.join(root, "commands", "hello.md"), "x\n");
@@ -88,6 +99,14 @@ test("buildMarketplace puts own global skills in ai and pins upstream plugins", 
 	assert.deepEqual(whole.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/whole", sha: "b".repeat(40) });
 });
 
+test("buildMarketplace gives the ai plugin a global wiki Stop hook", () => {
+	const root = fixture();
+	const [ai] = buildMarketplace(loadCatalog(root), root).plugins;
+	assert.deepEqual(ai.hooks, {
+		Stop: [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/skills/wiki/scripts/wiki-stop-hook.mjs" --global' }] }],
+	});
+});
+
 test("buildMarketplace fails when an upstream skill isn't locked", () => {
 	const root = fixture();
 	fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify({ skills: {}, npm: {} }));
@@ -106,6 +125,43 @@ test("validateSpec accepts a catalog-only spec", () => {
 	const root = fixture();
 	const spec = { version: 1, harnesses: ["pi"], global: false, skills: ["whole", "pi-opt-in"], workflows: ["implement"], extensions: ["subagent"], config: ["instructions"], env: ["API_TOKEN"] };
 	assert.deepEqual(validateSpec(spec, loadCatalog(root), root), []);
+});
+
+test("validateSpec accepts a wiki section", () => {
+	const root = fixture();
+	const spec = { version: 1, harnesses: ["claude"], wiki: { sourceDirs: ["src", "packages/api", ".github"] } };
+	assert.deepEqual(validateSpec(spec, loadCatalog(root), root), []);
+});
+
+test("validateSpec rejects bad wiki sections", () => {
+	const root = fixture();
+	const catalog = loadCatalog(root);
+	const cases = [
+		[[], /wiki must be an object/],
+		[{}, /wiki.sourceDirs must be a non-empty list/],
+		[{ sourceDirs: [] }, /wiki.sourceDirs must be a non-empty list/],
+		[{ sourceDirs: ["/abs"] }, /^invalid wiki source dir: "\/abs"$/],
+		[{ sourceDirs: ["../up"] }, /^invalid wiki source dir: "\.\.\/up"$/],
+		[{ sourceDirs: ["a/../b"] }, /^invalid wiki source dir: "a\/\.\.\/b"$/],
+		[{ sourceDirs: ["."] }, /^invalid wiki source dir: "\."$/],
+		[{ sourceDirs: ["./src"] }, /^invalid wiki source dir: "\.\/src"$/],
+		[{ sourceDirs: ["src/."] }, /^invalid wiki source dir: "src\/\."$/],
+		[{ sourceDirs: [5] }, /^invalid wiki source dir: 5$/],
+		[{ sourceDirs: ["src", "src"] }, /^duplicate wiki source dir: "src"$/],
+		[{ sourceDirs: ["a"], hooks: [] }, /unknown wiki field: hooks/],
+	];
+	for (const [wiki, pattern] of cases) {
+		const errors = validateSpec({ version: 1, harnesses: ["claude"], wiki }, catalog, root);
+		assert.equal(errors.length, 1, JSON.stringify(wiki));
+		assert.match(errors[0], pattern);
+	}
+});
+
+test("withPresets enables the wiki skill for a wiki section", () => {
+	const root = fixture();
+	const withWiki = withPresets({ version: 1, harnesses: ["claude"], skills: ["opt-in-own"], wiki: { sourceDirs: ["src"] } }, root);
+	assert.deepEqual(withWiki.skills, ["opt-in-own", "wiki"]);
+	assert.deepEqual(withPresets({ version: 1, harnesses: ["claude"] }, root).skills, []);
 });
 
 test("validateSpec rejects anything outside the catalog", () => {
@@ -246,4 +302,125 @@ test("buildInitialSpec produces a valid spec", () => {
 	fs.mkdirSync(path.join(root, "presets"));
 	fs.writeFileSync(path.join(root, "presets", "one.json"), JSON.stringify({ skills: ["whole"] }));
 	assert.deepEqual(validateSpec(buildInitialSpec(["claude", "pi"], ["one"]), loadCatalog(root), root), []);
+});
+
+test("withWikiHook keeps other settings and is idempotent", () => {
+	const command = wikiHookCommand("/x/ai");
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	const settings = { enabledPlugins: { "a@b": true }, permissions: { allow: ["Bash(ls)"] }, hooks: { Stop: [other] } };
+	const once = withWikiHook(settings, command);
+	const twice = withWikiHook(once, command);
+	assert.deepEqual(twice, once);
+	assert.deepEqual(twice.hooks.Stop, [other, { hooks: [{ type: "command", command }] }]);
+	assert.deepEqual(twice.enabledPlugins, settings.enabledPlugins);
+	assert.deepEqual(twice.permissions, settings.permissions);
+	assert.equal(settings.hooks.Stop.length, 1);
+});
+
+test("withoutWikiHook removes only the wiki hook and drops empty containers", () => {
+	const command = wikiHookCommand("/x/ai");
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	assert.deepEqual(withoutWikiHook(withWikiHook({ enabledPlugins: { a: true } }, command)), { enabledPlugins: { a: true } });
+	assert.deepEqual(withoutWikiHook(withWikiHook({ hooks: { Stop: [other] } }, command)), { hooks: { Stop: [other] } });
+	assert.deepEqual(withoutWikiHook({}), {});
+});
+
+test("withWikiHook replaces a group from a moved ai clone", () => {
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	const stale = withWikiHook({ hooks: { Stop: [other] } }, wikiHookCommand("/old/ai"));
+	const moved = withWikiHook(stale, wikiHookCommand("/new/ai"));
+	assert.deepEqual(moved.hooks.Stop, [other, { hooks: [{ type: "command", command: wikiHookCommand("/new/ai") }] }]);
+});
+
+test("withoutWikiHook removes a group from another ai clone but keeps the global and other hooks", () => {
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	const global = { hooks: [{ type: "command", command: "node '/x/ai/skills/wiki/scripts/wiki-stop-hook.mjs' --global" }] };
+	const stale = withWikiHook({ hooks: { Stop: [other, global] } }, wikiHookCommand("/old/ai"));
+	assert.deepEqual(withoutWikiHook(stale), { hooks: { Stop: [other, global] } });
+});
+
+test("wikiHookCommand quotes the script path", () => {
+	assert.equal(wikiHookCommand("/x/it's"), "node '/x/it'\\''s/skills/wiki/scripts/wiki-stop-hook.mjs'");
+});
+
+test("canWriteGenerated refuses a hand-written file", () => {
+	assert.equal(canWriteGenerated("#!/usr/bin/env node\nconsole.log(1)\n", false), false);
+	assert.equal(canWriteGenerated(undefined, false), true);
+	assert.equal(canWriteGenerated(`#!/usr/bin/env node\n${GENERATED_MARKER}\n`, false), true);
+	assert.equal(canWriteGenerated("#!/usr/bin/env node\nhand\n", true), true);
+});
+
+test("renderGeneratedScript puts the marker after the shebang", () => {
+	assert.deepEqual(renderGeneratedScript("#!/usr/bin/env node\nbody\n").split("\n").slice(0, 3), ["#!/usr/bin/env node", GENERATED_MARKER, "body"]);
+});
+
+test("assertWikiScriptWritable throws for a hand-written script and leaves it untouched", (t) => {
+	const project = fs.mkdtempSync(path.join(os.tmpdir(), "ai-wiki-script-"));
+	t.after(() => fs.rmSync(project, { recursive: true, force: true }));
+	assertWikiScriptWritable(project, false);
+	fs.mkdirSync(path.join(project, "scripts"));
+	const script = path.join(project, "scripts", "wiki.mjs");
+	fs.writeFileSync(script, "#!/usr/bin/env node\nmine\n");
+	assert.throws(() => assertWikiScriptWritable(project, false), /wasn't generated by air/);
+	assertWikiScriptWritable(project, true);
+	assert.equal(fs.readFileSync(script, "utf8"), "#!/usr/bin/env node\nmine\n");
+});
+
+test("assertWikiScriptWritable refuses a dangling symlink at scripts/wiki.mjs", (t) => {
+	const project = fs.mkdtempSync(path.join(os.tmpdir(), "ai-wiki-script-"));
+	t.after(() => fs.rmSync(project, { recursive: true, force: true }));
+	fs.mkdirSync(path.join(project, "scripts"));
+	fs.symlinkSync(path.join(project, "missing.mjs"), path.join(project, "scripts", "wiki.mjs"));
+	assert.throws(() => assertWikiScriptWritable(project, true), /Refusing to write through symlink/);
+});
+
+test("buildPiManifest declares opt-in extensions", () => {
+	const { pi } = buildPiManifest(loadCatalog());
+	assert.ok(pi.extensions.includes("./pi/extensions-opt-in/wiki.ts"));
+});
+
+test("aiPackageEntry leaves opt-in extensions out of the global entry", () => {
+	const entry = aiPackageEntry(loadCatalog(), "local");
+	assert.ok(entry.extensions.length > 0);
+	assert.ok(!entry.extensions.includes("pi/extensions-opt-in/wiki.ts"));
+});
+
+test("aiPackageEntry adds a named opt-in extension next to the defaults", () => {
+	const defaults = aiPackageEntry(loadCatalog(), "local").extensions;
+	const entry = aiPackageEntry(loadCatalog(), "local", { extensions: ["turn-timeout", "wiki"] });
+	assert.deepEqual(entry.extensions.sort(), ["pi/extensions-opt-in/wiki.ts", "pi/extensions/turn-timeout.ts"]);
+	assert.ok(defaults.includes("pi/extensions/turn-timeout.ts"));
+});
+
+test("aiPackageEntry drops the opt-in extension when it is no longer named", () => {
+	const entry = aiPackageEntry(loadCatalog(), "local", { extensions: ["turn-timeout"] });
+	assert.ok(!entry.extensions.includes("pi/extensions-opt-in/wiki.ts"));
+});
+
+test("validateSpec rejects opt-in extension names in extensions", () => {
+	const errors = validateSpec({ version: 1, harnesses: ["pi"], extensions: ["wiki"] }, loadCatalog());
+	assert.ok(errors.includes("unknown extension: wiki"));
+});
+
+test("projectPiEntry adds wiki to the default extensions and keeps the user's prompts for a wiki-only spec", () => {
+	const catalog = loadCatalog();
+	const entry = projectPiEntry(catalog, "local", { version: 1, harnesses: ["pi"], wiki: { sourceDirs: ["src"] } });
+	assert.deepEqual(entry.extensions.sort(), [...aiPackageEntry(catalog, "local").extensions, "pi/extensions-opt-in/wiki.ts"].sort());
+	assert.equal("prompts" in entry, false);
+	assert.ok(entry.skills.length > 0);
+});
+
+test("projectPiEntry adds wiki to named extensions and narrows prompts", () => {
+	const entry = projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"], extensions: ["turn-timeout"], wiki: { sourceDirs: ["src"] } });
+	assert.deepEqual(entry.extensions.sort(), ["pi/extensions-opt-in/wiki.ts", "pi/extensions/turn-timeout.ts"]);
+	assert.deepEqual(entry.prompts, []);
+});
+
+test("projectPiEntry drops global skills when global is false", () => {
+	const entry = projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"], global: false, wiki: { sourceDirs: ["src"] } });
+	assert.deepEqual(entry.skills, []);
+});
+
+test("projectPiEntry returns nothing without wiki, extensions or workflows", () => {
+	assert.equal(projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"] }), undefined);
 });
