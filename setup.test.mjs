@@ -314,9 +314,23 @@ test("withWikiHook keeps other settings and is idempotent", () => {
 test("withoutWikiHook removes only the wiki hook and drops empty containers", () => {
 	const command = wikiHookCommand("/x/ai");
 	const other = { hooks: [{ type: "command", command: "echo done" }] };
-	assert.deepEqual(withoutWikiHook(withWikiHook({ enabledPlugins: { a: true } }, command), command), { enabledPlugins: { a: true } });
-	assert.deepEqual(withoutWikiHook(withWikiHook({ hooks: { Stop: [other] } }, command), command), { hooks: { Stop: [other] } });
-	assert.deepEqual(withoutWikiHook({}, command), {});
+	assert.deepEqual(withoutWikiHook(withWikiHook({ enabledPlugins: { a: true } }, command)), { enabledPlugins: { a: true } });
+	assert.deepEqual(withoutWikiHook(withWikiHook({ hooks: { Stop: [other] } }, command)), { hooks: { Stop: [other] } });
+	assert.deepEqual(withoutWikiHook({}), {});
+});
+
+test("withWikiHook replaces a group from a moved ai clone", () => {
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	const stale = withWikiHook({ hooks: { Stop: [other] } }, wikiHookCommand("/old/ai"));
+	const moved = withWikiHook(stale, wikiHookCommand("/new/ai"));
+	assert.deepEqual(moved.hooks.Stop, [other, { hooks: [{ type: "command", command: wikiHookCommand("/new/ai") }] }]);
+});
+
+test("withoutWikiHook removes a group from another ai clone but keeps the global and other hooks", () => {
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	const global = { hooks: [{ type: "command", command: "node '/x/ai/skills/wiki/scripts/wiki-stop-hook.mjs' --global" }] };
+	const stale = withWikiHook({ hooks: { Stop: [other, global] } }, wikiHookCommand("/old/ai"));
+	assert.deepEqual(withoutWikiHook(stale), { hooks: { Stop: [other, global] } });
 });
 
 test("wikiHookCommand quotes the script path", () => {

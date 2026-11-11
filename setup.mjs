@@ -589,19 +589,22 @@ export function wikiHookCommand(root) {
 	return `node '${path.join(root, "skills", "wiki", "scripts", "wiki-stop-hook.mjs").replaceAll("'", "'\\''")}'`;
 }
 
-const isWikiHookGroup = (group, command) => group?.hooks?.some((hook) => hook?.command === command);
+const isWikiHookGroup = (group) =>
+	group?.hooks?.some((hook) => typeof hook?.command === "string" && hook.command.endsWith("/skills/wiki/scripts/wiki-stop-hook.mjs'"));
 
 export function withWikiHook(settings, command) {
 	const stop = settings.hooks?.Stop ?? [];
-	if (stop.some((group) => isWikiHookGroup(group, command))) return settings;
-	return { ...settings, hooks: { ...settings.hooks, Stop: [...stop, { hooks: [{ type: "command", command }] }] } };
+	const wikiGroups = stop.filter(isWikiHookGroup);
+	if (wikiGroups.length === 1 && wikiGroups[0].hooks.some((hook) => hook.command === command)) return settings;
+	const others = stop.filter((group) => !isWikiHookGroup(group));
+	return { ...settings, hooks: { ...settings.hooks, Stop: [...others, { hooks: [{ type: "command", command }] }] } };
 }
 
-export function withoutWikiHook(settings, command) {
+export function withoutWikiHook(settings) {
 	if (!settings.hooks?.Stop) return settings;
 	const { hooks, ...rest } = settings;
 	const { Stop, ...otherHooks } = hooks;
-	const remaining = Stop.filter((group) => !isWikiHookGroup(group, command));
+	const remaining = Stop.filter((group) => !isWikiHookGroup(group));
 	if (remaining.length) otherHooks.Stop = remaining;
 	return Object.keys(otherHooks).length ? { ...rest, hooks: otherHooks } : rest;
 }
@@ -627,8 +630,7 @@ function updateClaudeWikiHook(project, enabled) {
 	assertPlainDirectoryChain(project, relative);
 	const settingsPath = path.join(project, relative);
 	const settings = readJson(settingsPath, {});
-	const command = wikiHookCommand(ROOT);
-	const updated = enabled ? withWikiHook(settings, command) : withoutWikiHook(settings, command);
+	const updated = enabled ? withWikiHook(settings, wikiHookCommand(ROOT)) : withoutWikiHook(settings);
 	if (updated !== settings) writeFile(settingsPath, toJson(updated));
 }
 

@@ -9,14 +9,22 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const HOOK_FILE = "wiki-stop-hook.mjs";
+const REPO_HOOK_COMMAND = /^node '((?:[^']|'\\'')+)'$/;
+
+function repoHookScript(command) {
+  const script = REPO_HOOK_COMMAND.exec(command ?? "")?.[1].replaceAll("'\\''", "'");
+  return script?.endsWith("/skills/wiki/scripts/wiki-stop-hook.mjs") ? script : undefined;
+}
 
 export function hasRepoHook(projectDir) {
   try {
     const settings = JSON.parse(fs.readFileSync(path.join(projectDir, ".claude/settings.local.json"), "utf8"));
     const entries = settings.hooks?.Stop ?? [];
     return entries.some((entry) =>
-      (entry.hooks ?? []).some((hook) => hook.command?.includes(HOOK_FILE) && !hook.command.includes("--global")),
+      (entry.hooks ?? []).some((hook) => {
+        const script = repoHookScript(hook.command);
+        return script !== undefined && fs.existsSync(script);
+      }),
     );
   } catch {
     return false;

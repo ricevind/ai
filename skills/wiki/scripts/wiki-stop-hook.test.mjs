@@ -56,7 +56,7 @@ describe("nudgeReason", () => {
   });
 
   test("global mode is a no-op without docs/wiki, without a wiki key, with malformed harness.json, or when hasRepoHook is true", () => {
-    settingsWithStopCommand("node '/x/skills/wiki/scripts/wiki-stop-hook.mjs'");
+    settingsWithStopCommand(`node '${HOOK}'`);
     assert.equal(nudge({ global: true }), null);
     fs.rmSync(path.join(root, ".claude"), { recursive: true });
 
@@ -79,10 +79,15 @@ describe("nudgeReason", () => {
 describe("hasRepoHook", () => {
   test("detects a repo-level hook but not the global one", () => {
     assert.equal(hasRepoHook(root), false);
-    settingsWithStopCommand("node '/x/wiki-stop-hook.mjs' --global");
+    settingsWithStopCommand(`node '${HOOK}' --global`);
     assert.equal(hasRepoHook(root), false);
-    settingsWithStopCommand("node '/x/wiki-stop-hook.mjs'");
+    settingsWithStopCommand(`node '${HOOK}'`);
     assert.equal(hasRepoHook(root), true);
+  });
+
+  test("ignores a repo hook whose script is missing", () => {
+    settingsWithStopCommand("node '/gone/ai/skills/wiki/scripts/wiki-stop-hook.mjs'");
+    assert.equal(hasRepoHook(root), false);
   });
 });
 
