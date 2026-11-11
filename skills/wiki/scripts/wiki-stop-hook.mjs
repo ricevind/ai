@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// Claude Code Stop hook: when uncommitted code changes touch files that wiki pages
-// cover, and those pages are not changed too, ask Claude once to update them.
-// Never fails the stop: any error lets Claude stop.
-
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
