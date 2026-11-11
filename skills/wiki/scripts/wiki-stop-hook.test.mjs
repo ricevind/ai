@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { hasRepoHook } from "./wiki-stop-hook.mjs";
+import { hasRepoHook, nudgeReason } from "./wiki-stop-hook.mjs";
 
 const HOOK = path.join(path.dirname(fileURLToPath(import.meta.url)), "wiki-stop-hook.mjs");
 
@@ -69,6 +69,12 @@ describe("nudgeReason", () => {
     write("harness.json", JSON.stringify({ wiki: { sourceDirs: ["src"] } }));
     fs.renameSync(path.join(root, "docs/wiki"), path.join(root, "docs/gone"));
     assert.equal(nudge({ global: true }), null);
+  });
+
+  test("leaves process.env.WIKI_ROOT as it was", async () => {
+    const before = process.env.WIKI_ROOT;
+    assert.match(await nudgeReason(root, { global: false }), /page\.md/);
+    assert.equal(process.env.WIKI_ROOT, before);
   });
 
   test("global mode nudges when nothing else covers it", () => {

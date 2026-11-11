@@ -36,8 +36,16 @@ export async function nudgeReason(projectDir, { global }) {
   if (global && hasRepoHook(projectDir)) return;
 
   // wiki.mjs reads WIKI_ROOT once at load, so it must be set before the first import.
+  const previousRoot = process.env.WIKI_ROOT;
   process.env.WIKI_ROOT = projectDir;
-  const { affectedPages, changedFiles, readWikiConfig } = await import("./wiki.mjs");
+  let wiki;
+  try {
+    wiki = await import("./wiki.mjs");
+  } finally {
+    if (previousRoot === undefined) delete process.env.WIKI_ROOT;
+    else process.env.WIKI_ROOT = previousRoot;
+  }
+  const { affectedPages, changedFiles, readWikiConfig } = wiki;
   let config;
   try {
     config = readWikiConfig(projectDir);
