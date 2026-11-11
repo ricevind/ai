@@ -354,8 +354,9 @@ test("renderGeneratedScript puts the marker after the shebang", () => {
 	assert.deepEqual(renderGeneratedScript("#!/usr/bin/env node\nbody\n").split("\n").slice(0, 3), ["#!/usr/bin/env node", GENERATED_MARKER, "body"]);
 });
 
-test("assertWikiScriptWritable throws for a hand-written script and leaves it untouched", () => {
+test("assertWikiScriptWritable throws for a hand-written script and leaves it untouched", (t) => {
 	const project = fs.mkdtempSync(path.join(os.tmpdir(), "ai-wiki-script-"));
+	t.after(() => fs.rmSync(project, { recursive: true, force: true }));
 	assertWikiScriptWritable(project, false);
 	fs.mkdirSync(path.join(project, "scripts"));
 	const script = path.join(project, "scripts", "wiki.mjs");
