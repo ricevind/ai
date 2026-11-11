@@ -30,6 +30,7 @@ import {
 	withPresets,
 	withWikiHook,
 	wikiHookCommand,
+	workflowExcludes,
 } from "./setup.mjs";
 
 const skillFile = (harness, scope, machine = "local remote") =>
@@ -481,4 +482,10 @@ test("projectPiEntry drops global skills when global is false", () => {
 
 test("projectPiEntry returns nothing without wiki, extensions or workflows", () => {
 	assert.equal(projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"] }), undefined);
+});
+
+test("workflowExcludes adds .superpowers/ only with spec-flow", () => {
+	assert.deepEqual(workflowExcludes(["wiki", "spec-flow"]), [".superpowers/"]);
+	assert.deepEqual(workflowExcludes(["wiki"]), []);
+	assert.deepEqual(workflowExcludes([]), []);
 });

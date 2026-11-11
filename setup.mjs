@@ -671,6 +671,10 @@ function updateClaudeWikiHook(project, enabled) {
 	if (updated !== settings) writeFile(settingsPath, toJson(updated));
 }
 
+export function workflowExcludes(skillNames) {
+	return skillNames.includes("spec-flow") ? [".superpowers/"] : [];
+}
+
 function excludeFromGit(project, entries) {
 	const inside = spawnSync("git", ["-C", project, "rev-parse", "--is-inside-work-tree"], { encoding: "utf8" });
 	if (inside.stdout?.trim() !== "true") return;
@@ -773,6 +777,7 @@ async function apply({ specPath, checkout, force }) {
 		next.claudePlugins = plugins;
 		next.claudeCopies = copies;
 		excludes.push(".claude/settings.local.json", ...copies.map((name) => `.claude/skills/${name}`));
+		excludes.push(...workflowExcludes(selected.map((skill) => skill.name)));
 	}
 	const wantsClaudeHook = Boolean(spec.wiki) && spec.harnesses.includes("claude");
 	if (spec.wiki) syncWikiScript(project, Boolean(previous.wiki));
@@ -797,10 +802,11 @@ async function apply({ specPath, checkout, force }) {
 		next.piCopies = copies;
 		next.piPackages = entries.map(packageIdentity);
 		excludes.push(...PI_PROJECT_CACHE_DIRS, ...copies.map((name) => `.pi/skills/${name}`));
+		excludes.push(...workflowExcludes(selected.map((skill) => skill.name)));
 		if (isTracked(project, ".pi/settings.json")) console.warn("warning: .pi/settings.json is tracked by git, generated package entries will show as changes");
 		else excludes.push(".pi/settings.json");
 	}
-	excludeFromGit(project, excludes);
+	excludeFromGit(project, [...new Set(excludes)]);
 	latest.projects[project] = next;
 	writeFile(statePath(), toJson(latest));
 	console.log(`Applied ${specPath}`);

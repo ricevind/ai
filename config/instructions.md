@@ -29,3 +29,7 @@
 - The only exception: a why-comment for a non-obvious choice that types and names can't convey.
 - Never write a comment that says what the code does. Use types, function names, and constant names to carry context.
 - Strip teaching comments from snippets before they go into a file.
+
+## Workflow
+
+- When the `spec-flow` skill is available, load it before any other skill and follow it over superpowers' defaults.
