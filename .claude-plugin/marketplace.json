@@ -16,7 +16,19 @@
       ],
       "commands": [
         "./commands/git-message.md"
-      ]
+      ],
+      "hooks": {
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "node \"${CLAUDE_PLUGIN_ROOT}/skills/wiki/scripts/wiki-stop-hook.mjs\" --global"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "herdr",

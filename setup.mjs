@@ -182,6 +182,9 @@ export function buildMarketplace(catalog, root = ROOT) {
 				strict: false,
 				skills: skillPaths(shared),
 				commands: listFiles(root, "commands", ".md"),
+				hooks: {
+					Stop: [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/skills/wiki/scripts/wiki-stop-hook.mjs" --global' }] }],
+				},
 			},
 			...machinePlugins,
 			...upstream,

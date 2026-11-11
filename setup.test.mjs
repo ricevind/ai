@@ -88,6 +88,14 @@ test("buildMarketplace puts own global skills in ai and pins upstream plugins", 
 	assert.deepEqual(whole.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/whole", sha: "b".repeat(40) });
 });
 
+test("buildMarketplace gives the ai plugin a global wiki Stop hook", () => {
+	const root = fixture();
+	const [ai] = buildMarketplace(loadCatalog(root), root).plugins;
+	assert.deepEqual(ai.hooks, {
+		Stop: [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/skills/wiki/scripts/wiki-stop-hook.mjs" --global' }] }],
+	});
+});
+
 test("buildMarketplace fails when an upstream skill isn't locked", () => {
 	const root = fixture();
 	fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify({ skills: {}, npm: {} }));
