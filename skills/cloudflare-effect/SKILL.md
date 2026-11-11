@@ -1,15 +1,15 @@
 ---
 name: cloudflare-effect
-description: Stop before changing a Cloudflare account from a sandbox and write an effects list for the user to run instead. Use whenever a task would create, change, or delete anything on the Cloudflare platform, including deploys, secrets, DNS, routes, remote D1 migrations, KV, R2, Queues, Durable Object migrations, Access, or account settings. Code and local config changes don't need it.
+description: Stop before changing a Cloudflare account and write an effects list for the user to run instead. Use whenever a task would create, change, or delete anything on the Cloudflare platform, including deploys, secrets, DNS, routes, remote D1 migrations, KV, R2, Queues, Durable Object migrations, Access, or account settings. Code and local config changes don't need it.
 metadata:
   harness: claude pi
   scope: opt-in
-  machine: remote
+  machine: local remote
 ---
 
 # Cloudflare effects
 
-This sandbox never changes the Cloudflare account. The user applies platform changes, so you hand them a list of exact steps.
+Never change the Cloudflare account yourself. The user applies platform changes, so you hand them a list of exact steps.
 
 ## What you may do
 
