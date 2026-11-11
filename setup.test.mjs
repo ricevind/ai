@@ -7,6 +7,8 @@ import {
 	buildInitialSpec,
 	buildMarketplace,
 	buildPiManifest,
+	canWriteGenerated,
+	GENERATED_MARKER,
 	globalClaudePlugins,
 	deepMerge,
 	findSpec,
@@ -17,9 +19,13 @@ import {
 	packageIdentity,
 	parseSkillMetadata,
 	renderCliScript,
+	renderGeneratedScript,
 	replaceManagedPackages,
 	validateSpec,
+	withoutWikiHook,
 	withPresets,
+	withWikiHook,
+	wikiHookCommand,
 } from "./setup.mjs";
 
 const skillFile = (harness, scope, machine = "local remote") =>
@@ -288,4 +294,40 @@ test("buildInitialSpec produces a valid spec", () => {
 	fs.mkdirSync(path.join(root, "presets"));
 	fs.writeFileSync(path.join(root, "presets", "one.json"), JSON.stringify({ skills: ["whole"] }));
 	assert.deepEqual(validateSpec(buildInitialSpec(["claude", "pi"], ["one"]), loadCatalog(root), root), []);
+});
+
+test("withWikiHook keeps other settings and is idempotent", () => {
+	const command = wikiHookCommand("/x/ai");
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	const settings = { enabledPlugins: { "a@b": true }, permissions: { allow: ["Bash(ls)"] }, hooks: { Stop: [other] } };
+	const once = withWikiHook(settings, command);
+	const twice = withWikiHook(once, command);
+	assert.deepEqual(twice, once);
+	assert.deepEqual(twice.hooks.Stop, [other, { hooks: [{ type: "command", command }] }]);
+	assert.deepEqual(twice.enabledPlugins, settings.enabledPlugins);
+	assert.deepEqual(twice.permissions, settings.permissions);
+	assert.equal(settings.hooks.Stop.length, 1);
+});
+
+test("withoutWikiHook removes only the wiki hook and drops empty containers", () => {
+	const command = wikiHookCommand("/x/ai");
+	const other = { hooks: [{ type: "command", command: "echo done" }] };
+	assert.deepEqual(withoutWikiHook(withWikiHook({ enabledPlugins: { a: true } }, command), command), { enabledPlugins: { a: true } });
+	assert.deepEqual(withoutWikiHook(withWikiHook({ hooks: { Stop: [other] } }, command), command), { hooks: { Stop: [other] } });
+	assert.deepEqual(withoutWikiHook({}, command), {});
+});
+
+test("wikiHookCommand quotes the script path", () => {
+	assert.equal(wikiHookCommand("/x/it's"), "node '/x/it'\\''s/skills/wiki/scripts/wiki-stop-hook.mjs'");
+});
+
+test("canWriteGenerated refuses a hand-written file", () => {
+	assert.equal(canWriteGenerated("#!/usr/bin/env node\nconsole.log(1)\n", false), false);
+	assert.equal(canWriteGenerated(undefined, false), true);
+	assert.equal(canWriteGenerated(`#!/usr/bin/env node\n${GENERATED_MARKER}\n`, false), true);
+	assert.equal(canWriteGenerated("#!/usr/bin/env node\nhand\n", true), true);
+});
+
+test("renderGeneratedScript puts the marker after the shebang", () => {
+	assert.deepEqual(renderGeneratedScript("#!/usr/bin/env node\nbody\n").split("\n").slice(0, 3), ["#!/usr/bin/env node", GENERATED_MARKER, "body"]);
 });
