@@ -21,7 +21,7 @@ Run the superpowers skills below as written. Where this file differs, this file 
 
 | Stage | Runs | Delta |
 |---|---|---|
-| Brainstorm | `superpowers:brainstorming` | The spec goes to `docs/specs/`. The builder check runs. The spec needs the user's approval. |
+| Brainstorm | `superpowers:brainstorming` | The spec goes to `docs/specs/`. The builder check runs. The spec needs the user's approval, then `Status: approved`. |
 | Plan | `superpowers:writing-plans` | The plan goes to `.superpowers/plans/`. The self-review adds three questions. |
 | Execute | `superpowers:subagent-driven-development` (or `superpowers:executing-plans`) with `superpowers:test-driven-development` | Feature branch, one worktree, never main. Tasks one at a time. Rulings cover only how to build. |
 | Review | task and final reviewers, `superpowers:requesting-code-review`, `superpowers:receiving-code-review` | Wiki-aware, below. |
@@ -30,7 +30,7 @@ Run the superpowers skills below as written. Where this file differs, this file 
 
 ## Overrides
 
-- Specs: `docs/specs/YYYY-MM-DD-<topic>.md`, not brainstorming's "Where it goes" path. Put a `Status: draft | approved | shipped` line under the title.
+- Specs: `docs/specs/YYYY-MM-DD-<topic>.md`, not brainstorming's "Where it goes" path. Put a `Status: draft | approved | shipped` line under the title: `draft` while writing, `approved` when the user approves, `shipped` at Close (c).
 - Plans: `.superpowers/plans/YYYY-MM-DD-<feature>.md`, not writing-plans' "Save plans to" path. First run `git check-ignore -q .superpowers/`; if it fails, append `.superpowers/` to `.git/info/exclude`.
 - Plan self-review also answers: what could this break, which step is riskiest, which options were rejected and why.
 - Work on a feature branch in one worktree (`superpowers:using-git-worktrees`). Tasks run one at a time; no parallel implementers, no waves.
@@ -46,7 +46,7 @@ Only when `docs/wiki/` exists. Before dispatching any task reviewer or the final
 git diff --name-only BASE HEAD | node scripts/wiki.mjs affected -
 ```
 
-BASE is the task's base commit, or the merge base for the final review. Add this block to the reviewer's global constraints (`[GLOBAL_CONSTRAINTS]` for task reviewers, `[PLAN_OR_REQUIREMENTS]` for the final reviewer):
+BASE is the task's base commit, or the merge base for the final review. Add this block to the reviewer's constraints: `[GLOBAL_CONSTRAINTS]` where the template has it, otherwise `[PLAN_OR_REQUIREMENTS]`. Scoped re-reviews (fix-loop rounds, the final fix wave, `re-review-prompt.md`) get it too, next to `[FINDINGS]`:
 
 ```
 Wiki rules: <listed pages>, docs/wiki/review.md (if it exists).
@@ -62,13 +62,13 @@ b. Rule candidates: findings raised more than once in the SDD ledger (by two rev
 c. Set the spec's `Status: shipped`. Commit a–c.
 d. Run `gh api repos/{owner}/{repo} --jq .squash_merge_commit_message`. If it isn't `PR_BODY`, tell the user the `Spec:` trailer won't reach the squash commit. Don't change the setting.
 e. Ask the user before pushing. With their OK, push and open a PR whose description ends with `Spec: docs/specs/<file>.md`.
-f. After the merge, delete the plan and its SDD workspace.
+f. After the merge, delete the plan and its SDD workspace. Ask the user before removing the worktree and the feature branch; upstream's cleanup doesn't run, because Close replaces its menu.
 
 Pushing, opening the PR, and anything that changes the user's machine always need the user's OK.
 
 ## Pi
 
-- Invoke a skill: `/skill:<name>`, or read its `SKILL.md`.
+- Invoke a skill: `superpowers:<name>` is `/skill:<name>`, or read its `SKILL.md`.
 - Dispatch a subagent: the `subagent` tool. Implementer is `worker`, task and final reviewers are `reviewer`, the builder check is `planner`, recon is `scout`.
 - Todos: the SDD ledger.
 - Pass long inputs as file paths.
