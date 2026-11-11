@@ -423,6 +423,14 @@ export function aiPackageEntry(catalog, machine, { global = true, extensions, wo
 	return { ...entry, prompts: manifest.pi.prompts.map((file) => file.slice(2)).filter((file) => workflows.includes(path.basename(file, ".md"))) };
 }
 
+export function projectPiEntry(catalog, machine, spec) {
+	if (!spec.extensions && !spec.workflows && !spec.wiki) return;
+	const defaultNames = listExtensions(ROOT).filter(({ optIn, machines }) => !optIn && machines.includes(machine)).map(({ name }) => name);
+	const extensions = spec.wiki ? [...(spec.extensions ?? defaultNames), "wiki"] : (spec.extensions ?? []);
+	const workflows = spec.workflows ?? (spec.extensions ? [] : undefined);
+	return aiPackageEntry(catalog, machine, { global: spec.global !== false, extensions, workflows });
+}
+
 function globalPiEntries(catalog, machine, presetSkills) {
 	const upstream = piUpstreamEntries([...catalog.skills.filter((skill) => isUpstreamGlobal(skill, "pi") && skill.machines.includes(machine)), ...presetSkills]);
 	const npm = catalog.piPackages
@@ -747,11 +755,8 @@ async function apply({ specPath, checkout, force }) {
 		const copies = selected.filter((skill) => skill.origin === "own").map((skill) => skill.name);
 		syncCopiedSkills(project, ".pi/skills", copies, previous.piCopies ?? []);
 		const entries = piUpstreamEntries(selected.filter((skill) => skill.origin === "upstream"));
-		if (spec.extensions || spec.workflows || spec.wiki) {
-			const defaultNames = listExtensions(ROOT).filter(({ optIn, machines }) => !optIn && machines.includes(machine)).map(({ name }) => name);
-			const extensions = spec.wiki ? [...(spec.extensions ?? defaultNames), "wiki"] : (spec.extensions ?? []);
-			entries.push(aiPackageEntry(catalog, machine, { global: spec.global !== false, extensions, workflows: spec.workflows ?? [] }));
-		}
+		const aiEntry = projectPiEntry(catalog, machine, spec);
+		if (aiEntry) entries.push(aiEntry);
 		const settingsPath = path.join(project, ".pi", "settings.json");
 		assertPlainDirectoryChain(project, ".pi/settings.json");
 		const settings = readJson(settingsPath, {});

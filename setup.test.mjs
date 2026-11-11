@@ -20,6 +20,7 @@ import {
 	piUpstreamEntries,
 	packageIdentity,
 	parseSkillMetadata,
+	projectPiEntry,
 	renderCliScript,
 	renderGeneratedScript,
 	replaceManagedPackages,
@@ -385,4 +386,27 @@ test("aiPackageEntry drops the opt-in extension when it is no longer named", () 
 test("validateSpec rejects opt-in extension names in extensions", () => {
 	const errors = validateSpec({ version: 1, harnesses: ["pi"], extensions: ["wiki"] }, loadCatalog());
 	assert.ok(errors.includes("unknown extension: wiki"));
+});
+
+test("projectPiEntry adds wiki to the default extensions and keeps the user's prompts for a wiki-only spec", () => {
+	const catalog = loadCatalog();
+	const entry = projectPiEntry(catalog, "local", { version: 1, harnesses: ["pi"], wiki: { sourceDirs: ["src"] } });
+	assert.deepEqual(entry.extensions.sort(), [...aiPackageEntry(catalog, "local").extensions, "pi/extensions-opt-in/wiki.ts"].sort());
+	assert.equal("prompts" in entry, false);
+	assert.ok(entry.skills.length > 0);
+});
+
+test("projectPiEntry adds wiki to named extensions and narrows prompts", () => {
+	const entry = projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"], extensions: ["turn-timeout"], wiki: { sourceDirs: ["src"] } });
+	assert.deepEqual(entry.extensions.sort(), ["pi/extensions-opt-in/wiki.ts", "pi/extensions/turn-timeout.ts"]);
+	assert.deepEqual(entry.prompts, []);
+});
+
+test("projectPiEntry drops global skills when global is false", () => {
+	const entry = projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"], global: false, wiki: { sourceDirs: ["src"] } });
+	assert.deepEqual(entry.skills, []);
+});
+
+test("projectPiEntry returns nothing without wiki, extensions or workflows", () => {
+	assert.equal(projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"] }), undefined);
 });
