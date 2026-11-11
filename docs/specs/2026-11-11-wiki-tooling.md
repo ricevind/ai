@@ -1,6 +1,6 @@
 # Wiki tooling in `ai`
 
-Status: draft · Project 1 of 3 (2: spec-driven workflow preset, 3: task MCP)
+Status: shipped · Project 1 of 3 (2: spec-driven workflow preset, 3: task MCP)
 
 ## Intent
 
