@@ -140,9 +140,14 @@ test("validateSpec rejects bad wiki sections", () => {
 		[[], /wiki must be an object/],
 		[{}, /wiki.sourceDirs must be a non-empty list/],
 		[{ sourceDirs: [] }, /wiki.sourceDirs must be a non-empty list/],
-		[{ sourceDirs: ["/abs"] }, /invalid wiki source dir: \/abs/],
-		[{ sourceDirs: ["../up"] }, /invalid wiki source dir: \.\.\/up/],
-		[{ sourceDirs: ["a/../b"] }, /invalid wiki source dir/],
+		[{ sourceDirs: ["/abs"] }, /^invalid wiki source dir: "\/abs"$/],
+		[{ sourceDirs: ["../up"] }, /^invalid wiki source dir: "\.\.\/up"$/],
+		[{ sourceDirs: ["a/../b"] }, /^invalid wiki source dir: "a\/\.\.\/b"$/],
+		[{ sourceDirs: ["."] }, /^invalid wiki source dir: "\."$/],
+		[{ sourceDirs: ["./src"] }, /^invalid wiki source dir: "\.\/src"$/],
+		[{ sourceDirs: ["src/."] }, /^invalid wiki source dir: "src\/\."$/],
+		[{ sourceDirs: [5] }, /^invalid wiki source dir: 5$/],
+		[{ sourceDirs: ["src", "src"] }, /^duplicate wiki source dir: "src"$/],
 		[{ sourceDirs: ["a"], hooks: [] }, /unknown wiki field: hooks/],
 	];
 	for (const [wiki, pattern] of cases) {

@@ -96,10 +96,10 @@
             "type": "string",
             "pattern": "^[a-zA-Z0-9._-]+(/[a-zA-Z0-9._-]+)*$",
             "not": {
-              "pattern": "(^|/)\\.\\.(/|$)"
+              "pattern": "(^|/)\\.\\.?(/|$)"
             }
           },
-          "description": "Repo-relative directories whose changes the wiki tracks. No '..' segments."
+          "description": "Repo-relative directories whose changes the wiki tracks. No '.' or '..' segments."
         }
       },
       "description": "Turns on the wiki skill, a generated scripts/wiki.mjs, the Claude Stop hook, and the pi extension."

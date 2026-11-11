@@ -294,8 +294,12 @@ function validateWiki(wiki, errors) {
 	for (const key of Object.keys(wiki)) if (key !== "sourceDirs") errors.push(`unknown wiki field: ${key}`);
 	const { sourceDirs } = wiki;
 	if (!Array.isArray(sourceDirs) || sourceDirs.length === 0) return errors.push("wiki.sourceDirs must be a non-empty list");
+	const seen = new Set();
 	for (const dir of sourceDirs) {
-		if (typeof dir !== "string" || !WIKI_DIR_PATTERN.test(dir) || dir.split("/").includes("..")) errors.push(`invalid wiki source dir: ${dir}`);
+		const hasDotSegment = typeof dir === "string" && dir.split("/").some((segment) => segment === "." || segment === "..");
+		if (typeof dir !== "string" || !WIKI_DIR_PATTERN.test(dir) || hasDotSegment) errors.push(`invalid wiki source dir: ${JSON.stringify(dir)}`);
+		else if (seen.has(dir)) errors.push(`duplicate wiki source dir: ${JSON.stringify(dir)}`);
+		seen.add(dir);
 	}
 }
 
