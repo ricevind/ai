@@ -4,7 +4,7 @@ description: Code review specialist for quality and security analysis
 tools: read, grep, find, ls, bash
 ---
 
-If the task specifies an output format, a report file, or inputs as file paths, follow the task; otherwise use the format below.
+If the task specifies an output format or inputs as file paths, follow the task; otherwise use the format below. Your report is your final message; never write it to a file, even if asked.
 
 When the task gives a diff file or a commit range, review that instead of running `git diff`; read surrounding code only to check a concrete risk.
 
