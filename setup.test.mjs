@@ -19,6 +19,7 @@ import {
 	renderCliScript,
 	replaceManagedPackages,
 	validateSpec,
+	withPresets,
 } from "./setup.mjs";
 
 const skillFile = (harness, scope, machine = "local remote") =>
@@ -35,6 +36,7 @@ function fixture() {
 	addSkill("pi-global", "pi", "global");
 	addSkill("opt-in-own", "claude pi", "opt-in");
 	addSkill("pi-opt-in", "pi", "opt-in");
+	addSkill("wiki", "claude pi", "opt-in");
 	fs.mkdirSync(path.join(root, "skills", "synced"));
 	fs.mkdirSync(path.join(root, "commands"));
 	fs.writeFileSync(path.join(root, "commands", "hello.md"), "x\n");
@@ -106,6 +108,38 @@ test("validateSpec accepts a catalog-only spec", () => {
 	const root = fixture();
 	const spec = { version: 1, harnesses: ["pi"], global: false, skills: ["whole", "pi-opt-in"], workflows: ["implement"], extensions: ["subagent"], config: ["instructions"], env: ["API_TOKEN"] };
 	assert.deepEqual(validateSpec(spec, loadCatalog(root), root), []);
+});
+
+test("validateSpec accepts a wiki section", () => {
+	const root = fixture();
+	const spec = { version: 1, harnesses: ["claude"], wiki: { sourceDirs: ["src", "packages/api", ".github"] } };
+	assert.deepEqual(validateSpec(spec, loadCatalog(root), root), []);
+});
+
+test("validateSpec rejects bad wiki sections", () => {
+	const root = fixture();
+	const catalog = loadCatalog(root);
+	const cases = [
+		[[], /wiki must be an object/],
+		[{}, /wiki.sourceDirs must be a non-empty list/],
+		[{ sourceDirs: [] }, /wiki.sourceDirs must be a non-empty list/],
+		[{ sourceDirs: ["/abs"] }, /invalid wiki source dir: \/abs/],
+		[{ sourceDirs: ["../up"] }, /invalid wiki source dir: \.\.\/up/],
+		[{ sourceDirs: ["a/../b"] }, /invalid wiki source dir/],
+		[{ sourceDirs: ["a"], hooks: [] }, /unknown wiki field: hooks/],
+	];
+	for (const [wiki, pattern] of cases) {
+		const errors = validateSpec({ version: 1, harnesses: ["claude"], wiki }, catalog, root);
+		assert.equal(errors.length, 1, JSON.stringify(wiki));
+		assert.match(errors[0], pattern);
+	}
+});
+
+test("withPresets enables the wiki skill for a wiki section", () => {
+	const root = fixture();
+	const withWiki = withPresets({ version: 1, harnesses: ["claude"], skills: ["opt-in-own"], wiki: { sourceDirs: ["src"] } }, root);
+	assert.deepEqual(withWiki.skills, ["opt-in-own", "wiki"]);
+	assert.deepEqual(withPresets({ version: 1, harnesses: ["claude"] }, root).skills, []);
 });
 
 test("validateSpec rejects anything outside the catalog", () => {

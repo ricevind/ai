@@ -68,10 +68,15 @@ Run `air init`, or commit a `harness.json` at the root of the project yourself:
 | `config` | Any of `instructions`, `pi-models`, `pi-mcp` |
 | `workflows`, `extensions` | Pi only. Narrows which prompts and extensions load in this repo |
 | `env` | Names of variables that must be set. Never values |
+| `wiki` | `{ "sourceDirs": [...] }`. Turns on the wiki tooling for this repo. See [Wiki](#wiki) |
 
 A spec can only pick names from this repo. URLs, paths, hooks, and settings are rejected, so a project can't make a machine install arbitrary code. To add a third-party source, add it to `upstream.json` here first.
 
 Everything `apply` generates stays out of the project's git history through `.git/info/exclude`.
+
+## Wiki
+
+`"wiki": { "sourceDirs": ["src", "packages/api"] }` in `harness.json` turns on the `wiki` skill for the repo. `apply` then writes a generated `scripts/wiki.mjs`, which you commit, and installs the Claude Stop hook and the pi extension. `sourceDirs` lists the repo-relative directories whose changes the wiki tracks. It must be non-empty, with no absolute paths and no `..`.
 
 ## Presets
 
