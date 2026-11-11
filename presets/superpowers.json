@@ -1,0 +1,18 @@
+{
+  "skills": [
+    "brainstorming",
+    "writing-plans",
+    "executing-plans",
+    "subagent-driven-development",
+    "test-driven-development",
+    "systematic-debugging",
+    "verification-before-completion",
+    "requesting-code-review",
+    "receiving-code-review",
+    "using-git-worktrees",
+    "finishing-a-development-branch",
+    "dispatching-parallel-agents",
+    "writing-skills",
+    "spec-flow"
+  ]
+}

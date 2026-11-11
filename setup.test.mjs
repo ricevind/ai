@@ -10,6 +10,7 @@ import {
 	buildMarketplace,
 	buildPiManifest,
 	canWriteGenerated,
+	claudePluginNames,
 	GENERATED_MARKER,
 	globalClaudePlugins,
 	deepMerge,
@@ -29,6 +30,7 @@ import {
 	withPresets,
 	withWikiHook,
 	wikiHookCommand,
+	workflowExcludes,
 } from "./setup.mjs";
 
 const skillFile = (harness, scope, machine = "local remote") =>
@@ -60,11 +62,13 @@ function fixture() {
 			skills: [
 				{ name: "subdir", repo: "o/r", path: "skills/subdir", harness: "claude pi", scope: "global", machine: "local remote" },
 				{ name: "whole", repo: "o/r", path: "skills/whole", harness: "claude pi", scope: "opt-in", machine: "local remote" },
+				{ name: "g-one", plugin: "grp", repo: "o/g", path: "skills/g-one", harness: "claude pi", scope: "opt-in", machine: "local remote" },
+				{ name: "g-two", plugin: "grp", repo: "o/g", path: "skills/g-two", harness: "claude pi", scope: "opt-in", machine: "local remote" },
 			],
 			piPackages: [],
 		}),
 	);
-	fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify({ skills: { subdir: "a".repeat(40), whole: "b".repeat(40) }, npm: {} }));
+	fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify({ skills: { subdir: "a".repeat(40), whole: "b".repeat(40), "g-one": "c".repeat(40), "g-two": "c".repeat(40) }, npm: {} }));
 	return root;
 }
 
@@ -97,6 +101,61 @@ test("buildMarketplace puts own global skills in ai and pins upstream plugins", 
 	assert.deepEqual(subdir.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/subdir", sha: "a".repeat(40) });
 	assert.deepEqual(subdir.skills, ["./"]);
 	assert.deepEqual(whole.source, { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/whole", sha: "b".repeat(40) });
+});
+
+test("buildMarketplace groups skills that share a plugin", () => {
+	const root = fixture();
+	const { plugins } = buildMarketplace(loadCatalog(root), root);
+	assert.deepEqual(plugins.find(({ name }) => name === "grp"), {
+		name: "grp",
+		source: { source: "git-subdir", url: "https://github.com/o/g.git", path: "skills", sha: "c".repeat(40) },
+		strict: false,
+		skills: ["./g-one", "./g-two"],
+	});
+	assert.equal(plugins.filter(({ name }) => name === "grp").length, 1);
+	assert.ok(!plugins.some(({ name }) => name === "g-one" || name === "g-two"));
+	assert.deepEqual(plugins.find(({ name }) => name === "subdir"), {
+		name: "subdir",
+		source: { source: "git-subdir", url: "https://github.com/o/r.git", path: "skills/subdir", sha: "a".repeat(40) },
+		strict: false,
+		skills: ["./"],
+	});
+});
+
+test("loadCatalog rejects a group whose members disagree", () => {
+	const cases = [
+		[{ repo: "o/other" }, {}],
+		[{}, { "g-two": "d".repeat(40) }],
+		[{ path: "other/g-two" }, {}],
+		[{ scope: "global" }, {}],
+	];
+	for (const [override, lockOverride] of cases) {
+		const root = fixture();
+		const upstream = JSON.parse(fs.readFileSync(path.join(root, "upstream.json"), "utf8"));
+		Object.assign(upstream.skills.find(({ name }) => name === "g-two"), override);
+		fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify(upstream));
+		const lock = JSON.parse(fs.readFileSync(path.join(root, "upstream.lock.json"), "utf8"));
+		Object.assign(lock.skills, lockOverride);
+		fs.writeFileSync(path.join(root, "upstream.lock.json"), JSON.stringify(lock));
+		assert.throws(() => loadCatalog(root), /grp: grouped skills must share repo, sha, parent directory, harness, scope and machine/, JSON.stringify(override));
+	}
+});
+
+test("loadCatalog rejects a plugin name that collides with a skill", () => {
+	for (const plugin of ["opt-in-own", "subdir"]) {
+		const root = fixture();
+		const upstream = JSON.parse(fs.readFileSync(path.join(root, "upstream.json"), "utf8"));
+		for (const skill of upstream.skills.filter(({ name }) => name.startsWith("g-"))) skill.plugin = plugin;
+		fs.writeFileSync(path.join(root, "upstream.json"), JSON.stringify(upstream));
+		assert.throws(() => loadCatalog(root), new RegExp(`${plugin}: plugin name collides with skill ${plugin}`));
+	}
+});
+
+test("claudePluginNames dedupes grouped skills", () => {
+	const root = fixture();
+	const { skills } = loadCatalog(root);
+	const pick = (name) => skills.find((skill) => skill.name === name);
+	assert.deepEqual(claudePluginNames([pick("g-one"), pick("g-two"), pick("subdir")]), ["grp", "subdir"]);
 });
 
 test("buildMarketplace gives the ai plugin a global wiki Stop hook", () => {
@@ -423,4 +482,10 @@ test("projectPiEntry drops global skills when global is false", () => {
 
 test("projectPiEntry returns nothing without wiki, extensions or workflows", () => {
 	assert.equal(projectPiEntry(loadCatalog(), "local", { version: 1, harnesses: ["pi"] }), undefined);
+});
+
+test("workflowExcludes adds .superpowers/ only with spec-flow", () => {
+	assert.deepEqual(workflowExcludes(["wiki", "spec-flow"]), [".superpowers/"]);
+	assert.deepEqual(workflowExcludes(["wiki"]), []);
+	assert.deepEqual(workflowExcludes([]), []);
 });

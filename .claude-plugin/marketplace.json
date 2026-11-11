@@ -211,6 +211,31 @@
       "skills": [
         "./"
       ]
+    },
+    {
+      "name": "superpowers",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/obra/superpowers.git",
+        "path": "skills",
+        "sha": "22f0b463e7a5e579904dd6211a520321035526f7"
+      },
+      "strict": false,
+      "skills": [
+        "./brainstorming",
+        "./dispatching-parallel-agents",
+        "./executing-plans",
+        "./finishing-a-development-branch",
+        "./receiving-code-review",
+        "./requesting-code-review",
+        "./subagent-driven-development",
+        "./systematic-debugging",
+        "./test-driven-development",
+        "./using-git-worktrees",
+        "./verification-before-completion",
+        "./writing-plans",
+        "./writing-skills"
+      ]
     }
   ]
 }

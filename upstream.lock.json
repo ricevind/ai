@@ -13,7 +13,20 @@
     "turnstile-spin": "1a33048817d06df12882cb881dfc754e7039954a",
     "web-perf": "1a33048817d06df12882cb881dfc754e7039954a",
     "workers-profiling": "1a33048817d06df12882cb881dfc754e7039954a",
-    "sandbox-next": "1a33048817d06df12882cb881dfc754e7039954a"
+    "sandbox-next": "1a33048817d06df12882cb881dfc754e7039954a",
+    "brainstorming": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "writing-plans": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "executing-plans": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "subagent-driven-development": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "test-driven-development": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "systematic-debugging": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "verification-before-completion": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "requesting-code-review": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "receiving-code-review": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "using-git-worktrees": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "finishing-a-development-branch": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "dispatching-parallel-agents": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "writing-skills": "22f0b463e7a5e579904dd6211a520321035526f7"
   },
   "npm": {
     "@earendil-works/pi-voice": "0.2.0"

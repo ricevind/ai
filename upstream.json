@@ -13,7 +13,20 @@
     { "name": "turnstile-spin", "repo": "cloudflare/skills", "path": "skills/turnstile-spin", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
     { "name": "web-perf", "repo": "cloudflare/skills", "path": "skills/web-perf", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
     { "name": "workers-profiling", "repo": "cloudflare/skills", "path": "skills/workers-profiling", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
-    { "name": "sandbox-next", "repo": "cloudflare/skills", "path": "skills/sandbox-next", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" }
+    { "name": "sandbox-next", "repo": "cloudflare/skills", "path": "skills/sandbox-next", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "brainstorming", "repo": "obra/superpowers", "path": "skills/brainstorming", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "writing-plans", "repo": "obra/superpowers", "path": "skills/writing-plans", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "executing-plans", "repo": "obra/superpowers", "path": "skills/executing-plans", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "subagent-driven-development", "repo": "obra/superpowers", "path": "skills/subagent-driven-development", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "test-driven-development", "repo": "obra/superpowers", "path": "skills/test-driven-development", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "systematic-debugging", "repo": "obra/superpowers", "path": "skills/systematic-debugging", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "verification-before-completion", "repo": "obra/superpowers", "path": "skills/verification-before-completion", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "requesting-code-review", "repo": "obra/superpowers", "path": "skills/requesting-code-review", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "receiving-code-review", "repo": "obra/superpowers", "path": "skills/receiving-code-review", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "using-git-worktrees", "repo": "obra/superpowers", "path": "skills/using-git-worktrees", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "finishing-a-development-branch", "repo": "obra/superpowers", "path": "skills/finishing-a-development-branch", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "dispatching-parallel-agents", "repo": "obra/superpowers", "path": "skills/dispatching-parallel-agents", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" },
+    { "name": "writing-skills", "repo": "obra/superpowers", "path": "skills/writing-skills", "plugin": "superpowers", "harness": "claude pi", "scope": "opt-in", "machine": "local remote" }
   ],
   "piPackages": [
     { "npm": "@earendil-works/pi-voice", "machine": "local" }
