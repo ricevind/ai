@@ -84,6 +84,18 @@ The `ai` Claude plugin also carries a global fallback Stop hook. It nudges in an
 
 A preset is a named list of catalog skills in `presets/`, such as `cloudflare` or `astryx`. A project's `harness.json` can use presets through `apply`, which enables them for that repo only. `install --preset` enables them for the whole machine, which suits a machine that serves one kind of project.
 
+The `superpowers` preset enables the 13 pinned [obra/superpowers](https://github.com/obra/superpowers) skills, grouped as the plugin `superpowers`, plus `spec-flow`. In a cloud setup script, use `--preset superpowers`.
+
+## Workflow
+
+`spec-flow` is an overlay on the superpowers skills: it keeps specs, plans, and wiki pages in separate layers.
+
+- Specs live in `docs/specs/` and are committed.
+- Plans live in `.superpowers/`, which `apply` keeps out of git.
+- The wiki, where the repo has one, describes the code as it is.
+
+Stages run brainstorm, spec, plan, build, review, close. See `skills/spec-flow/SKILL.md` for the overrides, the wiki-aware review, and the pi mapping.
+
 ## Claude cloud sessions
 
 Cloud sessions don't read this machine's setup, and `harness.json` can't change a cloud environment, so the environment's setup script chooses the presets. Paste this into the environment's **Setup script**, with a commit from this repo:
@@ -116,7 +128,7 @@ metadata:
   machine: local remote
 ```
 
-Upstream skills and pi packages declare the same fields in `upstream.json`.
+Upstream skills and pi packages declare the same fields in `upstream.json`. Upstream skills that share a `plugin` value there become one Claude plugin instead of one plugin per skill, so the skills keep the `<plugin>:<skill>` names their own text refers to.
 
 `machine` follows the install profile: `workstation` is `local` and `sandbox` is `remote`. A spec can list a skill the machine doesn't get, and `apply` skips it with a message, so one `harness.json` works everywhere. Pi extensions have no frontmatter, so local-only ones go in `pi/extensions-local/`.
 
