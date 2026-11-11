@@ -3,6 +3,7 @@ import { nudgeReason } from "../../skills/wiki/scripts/wiki-stop-hook.mjs";
 
 export default function wikiExtension(pi: ExtensionAPI) {
 	pi.on("agent_before_settle", async (event, ctx) => {
+		if (event.outcome !== "completed") return;
 		try {
 			const reason = await nudgeReason(ctx.cwd ?? process.cwd(), { global: false });
 			if (!reason) return;
