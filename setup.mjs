@@ -14,6 +14,7 @@ const MACHINES = ["local", "remote"];
 const EXTENSION_DIRS = [
 	{ dir: "pi/extensions", machines: MACHINES },
 	{ dir: "pi/extensions-local", machines: ["local"] },
+	{ dir: "pi/extensions-opt-in", machines: MACHINES, optIn: true },
 ];
 const NAME_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 const REF_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/;
@@ -117,13 +118,13 @@ const listFiles = (root, dir, extension) =>
 		: [];
 
 function listExtensions(root) {
-	return EXTENSION_DIRS.flatMap(({ dir, machines }) => {
+	return EXTENSION_DIRS.flatMap(({ dir, machines, optIn = false }) => {
 		const absolute = path.join(root, dir);
 		if (!fs.existsSync(absolute)) return [];
 		return fs.readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
-			if (entry.isFile() && entry.name.endsWith(".ts")) return [{ name: entry.name.slice(0, -3), file: `${dir}/${entry.name}`, machines }];
+			if (entry.isFile() && entry.name.endsWith(".ts")) return [{ name: entry.name.slice(0, -3), file: `${dir}/${entry.name}`, machines, optIn }];
 			return entry.isDirectory() && fs.existsSync(path.join(absolute, entry.name, "index.ts"))
-				? [{ name: entry.name, file: `${dir}/${entry.name}/index.ts`, machines }]
+				? [{ name: entry.name, file: `${dir}/${entry.name}/index.ts`, machines, optIn }]
 				: [];
 		});
 	}).sort((left, right) => left.name.localeCompare(right.name));
@@ -280,7 +281,7 @@ export function validateSpec(spec, catalog, root = ROOT) {
 	for (const name of stringList("workflows")) {
 		if (!workflows.some((file) => path.basename(file, ".md") === name)) errors.push(`unknown workflow: ${name}`);
 	}
-	const extensions = listExtensions(root).map(({ name }) => name);
+	const extensions = listExtensions(root).filter(({ optIn }) => !optIn).map(({ name }) => name);
 	for (const name of stringList("extensions")) if (!extensions.includes(name)) errors.push(`unknown extension: ${name}`);
 	for (const name of stringList("config")) if (!SPEC_CONFIG.includes(name)) errors.push(`unknown config: ${name}`);
 	for (const name of stringList("env")) if (!ENV_PATTERN.test(name)) errors.push(`invalid env name: ${name}`);
@@ -410,13 +411,13 @@ function removePlugin(name, scope, cwd) {
 const readProfiles = () => readJson(path.join(ROOT, "config", "profiles.json"), {});
 const currentMachine = (state) => readProfiles()[state.machine?.profile]?.machine ?? "remote";
 
-function aiPackageEntry(catalog, machine, { global = true, extensions, workflows } = {}) {
+export function aiPackageEntry(catalog, machine, { global = true, extensions, workflows } = {}) {
 	const manifest = buildPiManifest(catalog);
 	const allowed = listExtensions(ROOT).filter((extension) => extension.machines.includes(machine));
 	const entry = {
 		source: ROOT,
 		skills: global ? catalog.skills.filter((skill) => isOwnGlobal(skill, "pi") && skill.machines.includes(machine)).map((skill) => skill.dir).sort() : [],
-		extensions: allowed.filter(({ name }) => !extensions || extensions.includes(name)).map(({ file }) => file),
+		extensions: allowed.filter(({ name, optIn }) => (extensions ? extensions.includes(name) : !optIn)).map(({ file }) => file),
 	};
 	if (!workflows) return entry;
 	return { ...entry, prompts: manifest.pi.prompts.map((file) => file.slice(2)).filter((file) => workflows.includes(path.basename(file, ".md"))) };
@@ -744,8 +745,10 @@ async function apply({ specPath, checkout, force }) {
 		const copies = selected.filter((skill) => skill.origin === "own").map((skill) => skill.name);
 		syncCopiedSkills(project, ".pi/skills", copies, previous.piCopies ?? []);
 		const entries = piUpstreamEntries(selected.filter((skill) => skill.origin === "upstream"));
-		if (spec.extensions || spec.workflows) {
-			entries.push(aiPackageEntry(catalog, machine, { global: spec.global !== false, extensions: spec.extensions ?? [], workflows: spec.workflows ?? [] }));
+		if (spec.extensions || spec.workflows || spec.wiki) {
+			const defaultNames = listExtensions(ROOT).filter(({ optIn, machines }) => !optIn && machines.includes(machine)).map(({ name }) => name);
+			const extensions = spec.wiki ? [...(spec.extensions ?? defaultNames), "wiki"] : (spec.extensions ?? []);
+			entries.push(aiPackageEntry(catalog, machine, { global: spec.global !== false, extensions, workflows: spec.workflows ?? [] }));
 		}
 		const settingsPath = path.join(project, ".pi", "settings.json");
 		assertPlainDirectoryChain(project, ".pi/settings.json");
