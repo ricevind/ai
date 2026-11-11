@@ -660,7 +660,7 @@ function assertPlainDirectoryChain(project, relative) {
 	let current = project;
 	for (const segment of relative.split("/")) {
 		current = path.join(current, segment);
-		if (fs.existsSync(current) && fs.lstatSync(current).isSymbolicLink()) {
+		if (fs.lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink()) {
 			throw new SetupError(`Refusing to write through symlink: ${current}`);
 		}
 	}

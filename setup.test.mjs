@@ -360,6 +360,14 @@ test("assertWikiScriptWritable throws for a hand-written script and leaves it un
 	assert.equal(fs.readFileSync(script, "utf8"), "#!/usr/bin/env node\nmine\n");
 });
 
+test("assertWikiScriptWritable refuses a dangling symlink at scripts/wiki.mjs", (t) => {
+	const project = fs.mkdtempSync(path.join(os.tmpdir(), "ai-wiki-script-"));
+	t.after(() => fs.rmSync(project, { recursive: true, force: true }));
+	fs.mkdirSync(path.join(project, "scripts"));
+	fs.symlinkSync(path.join(project, "missing.mjs"), path.join(project, "scripts", "wiki.mjs"));
+	assert.throws(() => assertWikiScriptWritable(project, true), /Refusing to write through symlink/);
+});
+
 test("buildPiManifest declares opt-in extensions", () => {
 	const { pi } = buildPiManifest(loadCatalog());
 	assert.ok(pi.extensions.includes("./pi/extensions-opt-in/wiki.ts"));
