@@ -16,7 +16,8 @@
       "./pi/extensions/subagent/index.ts",
       "./pi/extensions/system-prompt.ts",
       "./pi/extensions/turn-timeout.ts",
-      "./pi/extensions/web-search.ts"
+      "./pi/extensions/web-search.ts",
+      "./pi/extensions-opt-in/wiki.ts"
     ],
     "skills": [
       "./skills/frontend-design",
