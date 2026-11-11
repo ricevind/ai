@@ -21,7 +21,7 @@ Run the superpowers skills below as written. Where this file differs, this file 
 
 | Stage | Runs | Delta |
 |---|---|---|
-| Brainstorm | `superpowers:brainstorming` | The spec goes to `docs/specs/`. The builder check runs. The spec needs the user's approval, then `Status: approved`. |
+| Brainstorm | `superpowers:brainstorming` | The spec goes to `docs/specs/`, committed on the feature branch. The builder check runs. The spec needs the user's approval, then `Status: approved`. |
 | Plan | `superpowers:writing-plans` | The plan goes to `.superpowers/plans/`. The self-review adds three questions. |
 | Execute | `superpowers:subagent-driven-development` (or `superpowers:executing-plans`) with `superpowers:test-driven-development` | Feature branch, one worktree, never main. Tasks one at a time. Rulings cover only how to build. |
 | Review | task and final reviewers, `superpowers:requesting-code-review`, `superpowers:receiving-code-review` | Wiki-aware, below. |
@@ -30,7 +30,7 @@ Run the superpowers skills below as written. Where this file differs, this file 
 
 ## Overrides
 
-- Specs: `docs/specs/YYYY-MM-DD-<topic>.md`, not brainstorming's "Where it goes" path. Put a `Status: draft | approved | shipped` line under the title: `draft` while writing, `approved` when the user approves, `shipped` at Close (c).
+- Specs: `docs/specs/YYYY-MM-DD-<topic>.md`, not brainstorming's "Where it goes" path. Create the feature branch and worktree before committing the spec; never commit it on main. Put a `Status: draft | approved | shipped` line under the title: `draft` while writing, `approved` when the user approves, `shipped` at Close (c).
 - Plans: `.superpowers/plans/YYYY-MM-DD-<feature>.md`, not writing-plans' "Save plans to" path. First run `git check-ignore -q .superpowers/`; if it fails, append `.superpowers/` to `.git/info/exclude`.
 - Plan self-review also answers: what could this break, which step is riskiest, which options were rejected and why.
 - Work on a feature branch in one worktree (`superpowers:using-git-worktrees`). Tasks run one at a time; no parallel implementers, no waves.
@@ -50,7 +50,7 @@ BASE is the task's base commit, or the merge base for the final review. Add this
 
 ```
 Wiki rules: <listed pages>, docs/wiki/review.md (if it exists).
-Check the diff against each page's `## Rules`; a violation is Important.
+Check the diff against each page's `## Rules` and review.md's `## Always check`; a violation is Important.
 ```
 
 ## Close
@@ -58,10 +58,10 @@ Check the diff against each page's `## Rules`; a violation is Important.
 Run finishing-a-development-branch's test verification, then do these instead of its options:
 
 a. Wiki: `git diff --name-only BASE HEAD | node scripts/wiki.mjs affected -` against the base branch. Update those pages, then run `node scripts/wiki.mjs` and `node scripts/wiki.mjs check` until it reports `ok`.
-b. Rule candidates: findings raised more than once in the SDD ledger (by two reviewers, or still open after a fix round), plus Important findings about conventions the wiki doesn't state. Propose each as a `## Rules` line on the page that covers the code, or on `docs/wiki/review.md` if it applies repo-wide. The user picks which go in.
+b. Rule candidates: findings raised more than once in the SDD ledger (by two reviewers, or still open after a fix round), plus Important findings about conventions the wiki doesn't state. Propose each as a `## Rules` line on the page that covers the code, or on `docs/wiki/review.md`'s `## Always check` if it applies repo-wide. The user picks which go in.
 c. Set the spec's `Status: shipped`. Commit a–c.
 d. Run `gh api repos/{owner}/{repo} --jq .squash_merge_commit_message`. If it isn't `PR_BODY`, tell the user the `Spec:` trailer won't reach the squash commit. Don't change the setting.
-e. Ask the user before pushing. With their OK, push and open a PR whose description ends with `Spec: docs/specs/<file>.md`.
+e. Report "Rulings I made" from the ledger. Ask the user before pushing. With their OK, push (on a new branch if HEAD is detached) and open a PR whose description ends with `Spec: docs/specs/<file>.md`.
 f. After the merge, delete the plan and its SDD workspace. Ask the user before removing the worktree and the feature branch; upstream's cleanup doesn't run, because Close replaces its menu.
 
 Pushing, opening the PR, and anything that changes the user's machine always need the user's OK.

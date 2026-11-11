@@ -1,6 +1,6 @@
 # Spec-driven workflow preset
 
-Status: draft · Project 2 of 3 (1: wiki tooling, shipped · 3: task MCP)
+Status: approved · Project 2 of 3 (1: wiki tooling, shipped · 3: task MCP)
 
 ## Intent
 

@@ -84,7 +84,7 @@ The `ai` Claude plugin also carries a global fallback Stop hook. It nudges in an
 
 A preset is a named list of catalog skills in `presets/`, such as `cloudflare` or `astryx`. A project's `harness.json` can use presets through `apply`, which enables them for that repo only. `install --preset` enables them for the whole machine, which suits a machine that serves one kind of project.
 
-The `superpowers` preset enables the 13 pinned [obra/superpowers](https://github.com/obra/superpowers) skills, grouped as the plugin `superpowers`, plus `spec-flow`. In a cloud setup script, use `--preset superpowers`.
+The `superpowers` preset enables the 13 pinned [obra/superpowers](https://github.com/obra/superpowers) skills, grouped as the plugin `superpowers` (naming any member enables the whole plugin with all its skills), plus `spec-flow`. In a cloud setup script, use `--preset superpowers`.
 
 ## Workflow
 
@@ -94,7 +94,7 @@ The `superpowers` preset enables the 13 pinned [obra/superpowers](https://github
 - Plans live in `.superpowers/`, which `apply` keeps out of git.
 - The wiki, where the repo has one, describes the code as it is.
 
-Stages run brainstorm, spec, plan, build, review, close. See `skills/spec-flow/SKILL.md` for the overrides, the wiki-aware review, and the pi mapping.
+Stages run Brainstorm, Plan, Execute, Review, Debug, Close. See `skills/spec-flow/SKILL.md` for the overrides, the wiki-aware review, and the pi mapping.
 
 ## Claude cloud sessions
 
@@ -128,7 +128,7 @@ metadata:
   machine: local remote
 ```
 
-Upstream skills and pi packages declare the same fields in `upstream.json`. Upstream skills that share a `plugin` value there become one Claude plugin instead of one plugin per skill, so the skills keep the `<plugin>:<skill>` names their own text refers to.
+Upstream skills and pi packages declare the same fields in `upstream.json`. Upstream skills that share a `plugin` value there become one Claude plugin instead of one plugin per skill, so the skills keep the `<plugin>:<skill>` names their own text refers to. Naming any member of a grouped plugin enables the whole plugin with all its skills.
 
 `machine` follows the install profile: `workstation` is `local` and `sandbox` is `remote`. A spec can list a skill the machine doesn't get, and `apply` skips it with a message, so one `harness.json` works everywhere. Pi extensions have no frontmatter, so local-only ones go in `pi/extensions-local/`.
 
